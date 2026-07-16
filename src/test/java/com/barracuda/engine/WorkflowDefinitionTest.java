@@ -1,4 +1,4 @@
-package engine;
+package com.barracuda.engine;
 
 import com.barracuda.engine.domain.WorkflowStatus;
 import com.barracuda.engine.store.FileSystemWorkflowStore;
