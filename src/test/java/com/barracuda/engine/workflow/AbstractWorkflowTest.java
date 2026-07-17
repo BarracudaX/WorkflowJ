@@ -1,5 +1,6 @@
 package com.barracuda.engine.workflow;
 
+import com.barracuda.engine.WorkflowUnitTest;
 import com.barracuda.engine.domain.WorkflowStatus;
 import com.barracuda.engine.event.WorkflowEventPublisher;
 import com.barracuda.engine.store.WorkflowStore;
@@ -16,6 +17,7 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+@WorkflowUnitTest
 public class AbstractWorkflowTest {
 
     @Mock

@@ -1,6 +1,5 @@
 package com.barracuda.engine.workflow;
 
-import com.barracuda.engine.WorkflowUnitTest;
 import com.barracuda.engine.domain.WorkflowStatus;
 import com.barracuda.engine.event.WorkflowEvent.*;
 import com.barracuda.engine.test.FailWork;
@@ -14,7 +13,6 @@ import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
-@WorkflowUnitTest
 public class WorkflowTest extends AbstractWorkflowTest{
 
     @Test
