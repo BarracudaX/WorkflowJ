@@ -33,10 +33,6 @@ public abstract class AbstractWorkflow implements Workflow {
 
     @Override
     public void execute() {
-        if (!Thread.currentThread().isVirtual()) {
-            throw new IllegalStateException("Workflow should be executed in a virtual thread.");
-        }
-
         try {
             ScopedValue.where(WORKFLOW_CONTEXT, Objects.requireNonNull(context())).run(this::executeWorkflow);
         } catch (Exception ex) {
@@ -78,8 +74,6 @@ public abstract class AbstractWorkflow implements Workflow {
     protected abstract void workflowStarting();
 
     protected abstract void workflowCompleted();
-
-    protected abstract void workFailed(Exception e,Work work);
 
     protected abstract void workflowInterrupted();
 

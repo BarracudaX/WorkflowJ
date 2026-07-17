@@ -1,5 +1,7 @@
 package com.barracuda.engine.workflow;
 
+import com.barracuda.engine.domain.WorkflowStatus;
+
 public interface Workflow {
 
     /**
@@ -7,4 +9,5 @@ public interface Workflow {
      */
     void execute();
 
+    WorkflowStatus status();
 }

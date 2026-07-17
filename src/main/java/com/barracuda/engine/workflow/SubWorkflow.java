@@ -1,6 +1,6 @@
 package com.barracuda.engine.workflow;
 
-import com.barracuda.engine.event.WorkflowEvent.*;
+import com.barracuda.engine.domain.WorkflowStatus;
 import com.barracuda.engine.work.Work;
 
 import java.util.List;
@@ -22,21 +22,16 @@ public class SubWorkflow extends AbstractWorkflow {
 
     @Override
     protected void workflowStarting() {
-        if(currentlyRunningTaskIndex.get() == 0){
+//        if(currentlyRunningTaskIndex.get() == 0){
 //            WORKFLOW_CONTEXT.get().getEventPublisher().publishEvent(new SubWorkflowStartedEvent());
-        }else {
+//        }else {
 //            WORKFLOW_CONTEXT.get().getEventPublisher().publishEvent(new SubWorkflowResumedEvent());
-        }
+//        }
     }
 
     @Override
     protected void workflowCompleted() {
 //        WORKFLOW_CONTEXT.get().getEventPublisher().publishEvent(new SubWorkflowCompletedEvent());
-    }
-
-    @Override
-    protected void workFailed(Exception e, Work work) {
-//        WORKFLOW_CONTEXT.get().getEventPublisher().publishEvent(new SubWorkflowFailedEvent());
     }
 
     @Override
@@ -54,4 +49,8 @@ public class SubWorkflow extends AbstractWorkflow {
         return new WorkflowContext(WORKFLOW_CONTEXT.get());
     }
 
+    @Override
+    public WorkflowStatus status() {
+        return null;
+    }
 }
