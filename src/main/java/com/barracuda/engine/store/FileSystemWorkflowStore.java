@@ -25,7 +25,7 @@ public class FileSystemWorkflowStore implements WorkflowStore{
     @Override
     public <T> Path store(T data, Path file) {
 
-        var renameFile = file.resolveSibling(file.getFileName().toString()+".completed");
+        var renameFile = file.resolveSibling(file.getFileName().toString()+".ready");
 
         try(var channel = FileChannel.open(file, options,permissions)){
 
