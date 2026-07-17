@@ -1,6 +1,11 @@
 package com.barracuda.engine.workflow;
 
 import com.barracuda.engine.domain.WorkflowStatus;
+import com.barracuda.engine.event.WorkflowEvent;
+import com.barracuda.engine.event.WorkflowEvent.WorkflowFailedEvent;
+import com.barracuda.engine.event.WorkflowEvent.WorkflowPausedEvent;
+import com.barracuda.engine.event.WorkflowEvent.WorkflowResumedEvent;
+import com.barracuda.engine.event.WorkflowEvent.WorkflowStartedEvent;
 import com.barracuda.engine.event.WorkflowEventPublisher;
 import com.barracuda.engine.listener.WorkflowEventListener;
 import com.barracuda.engine.store.WorkflowStore;
@@ -31,24 +36,29 @@ public class RootWorkflowImpl extends AbstractWorkflow implements RootWorkflow{
     }
 
     @Override
-    protected void workflowFailed(Exception exception) {
+    protected void workflowFailed(Throwable exception) {
         if(!workflowStatus.compareAndSet(WorkflowStatus.RUNNING, WorkflowStatus.FAILED)){
             throw new IllegalStateException("Workflow failed with an exception while not running. Curren status: "+workflowStatus.get(),exception);
         }
-//        publishEvent(new WorkflowFailedEvent());
+        workflowEventPublisher.fire(new WorkflowFailedEvent(exception,id));
     }
 
     @Override
     protected void workflowStarting() {
+        var currentState = workflowStatus.get();
         if(!workflowStatus.compareAndSet(WorkflowStatus.INITIALIZED, WorkflowStatus.RUNNING) && !workflowStatus.compareAndSet(WorkflowStatus.PAUSED, WorkflowStatus.RUNNING)) {
             throw new IllegalStateException("Workflow cannot be executed due to its current state being "+ workflowStatus.get().name()+". The workflow needs to be in either INITIALIZED or PAUSED state in order to be executed.");
         }
-        publishStartEvent();
+        if (currentState == WorkflowStatus.INITIALIZED) {
+            workflowEventPublisher.fire(new WorkflowStartedEvent(id));
+        }else{
+            workflowEventPublisher.fire(new WorkflowResumedEvent(id));
+        }
     }
 
     @Override
     protected void workflowCompleted() {
-//        publishEvent(new WorkflowEvent.WorkflowCompletedEvent());
+        workflowEventPublisher.fire(new WorkflowEvent.WorkflowCompletedEvent(id));
 
         workflowStatus.set(WorkflowStatus.COMPLETED);
     }
@@ -59,15 +69,7 @@ public class RootWorkflowImpl extends AbstractWorkflow implements RootWorkflow{
             throw new IllegalStateException("Requested pausing while workflow isn't running.");
         }
 
-//        publishEvent(new WorkflowEvent.WorkflowPausedEvent());
-    }
-
-    private void publishStartEvent() {
-        if (currentlyRunningTaskIndex.get() == 0) {
-//            publishEvent(new WorkflowStartedEvent());
-        } else {
-//            publishEvent(new WorkflowResumedEvent());
-        }
+        workflowEventPublisher.fire(new WorkflowPausedEvent(id));
     }
 
     @Override
@@ -88,6 +90,11 @@ public class RootWorkflowImpl extends AbstractWorkflow implements RootWorkflow{
     @Override
     public WorkflowStatus status() {
         return workflowStatus.get();
+    }
+
+    @Override
+    public long id() {
+        return id;
     }
 
 }

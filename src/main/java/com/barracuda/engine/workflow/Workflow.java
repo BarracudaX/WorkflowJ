@@ -10,4 +10,6 @@ public interface Workflow {
     void execute();
 
     WorkflowStatus status();
+
+    long id();
 }

@@ -19,11 +19,10 @@ public abstract class AbstractWorkflow implements Workflow {
     public static final ScopedValue<WorkflowContext> WORKFLOW_CONTEXT = ScopedValue.newInstance();
 
     @ToString.Include
-    protected final AtomicInteger currentlyRunningTaskIndex = new AtomicInteger(0);
+    protected final AtomicInteger currentlyRunningWorkIndex = new AtomicInteger(0);
     @ToString.Include
-    private final String name;
-    @ToString.Include
-    private final long id;
+    protected final String name;
+    protected final long id;
 
     public AbstractWorkflow(String name, long id) {
         this.name = Objects.requireNonNull(name);
@@ -35,20 +34,20 @@ public abstract class AbstractWorkflow implements Workflow {
     public void execute() {
         try {
             ScopedValue.where(WORKFLOW_CONTEXT, Objects.requireNonNull(context())).run(this::executeWorkflow);
-        } catch (Exception ex) {
-            workflowFailed(ex);
+        } catch (StructuredTaskScope.FailedException ex) {
+            workflowFailed(ex.getCause());
             throw ex;
         }
     }
 
-    protected abstract void workflowFailed(Exception exception);
+    protected abstract void workflowFailed(Throwable exception);
 
     private void executeWorkflow() {
         workflowStarting();
 
         var works = works();
 
-        for (int i = currentlyRunningTaskIndex.get(); i < works.size(); i++) {
+        for (int i = currentlyRunningWorkIndex.get(); i < works.size(); i++) {
 
             Work work = works.get(i);
 
@@ -79,7 +78,7 @@ public abstract class AbstractWorkflow implements Workflow {
     protected abstract List<Work> works();
 
     private void workCompleted(Work work) {
-        currentlyRunningTaskIndex.incrementAndGet();
+        currentlyRunningWorkIndex.incrementAndGet();
     }
 
     protected abstract WorkflowContext context();

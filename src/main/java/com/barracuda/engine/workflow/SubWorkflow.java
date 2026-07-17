@@ -16,7 +16,7 @@ public class SubWorkflow extends AbstractWorkflow {
 
 
     @Override
-    protected void workflowFailed(Exception exception) {
+    protected void workflowFailed(Throwable exception) {
 //        WORKFLOW_CONTEXT.get().getEventPublisher().publishEvent(new SubWorkflowFailedEvent());
     }
 
@@ -52,5 +52,10 @@ public class SubWorkflow extends AbstractWorkflow {
     @Override
     public WorkflowStatus status() {
         return null;
+    }
+
+    @Override
+    public long id() {
+        return id;
     }
 }

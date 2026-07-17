@@ -6,7 +6,7 @@ public sealed interface WorkflowEvent {
 
     record WorkflowCompletedEvent(long workflowID) implements WorkflowEvent{}
 
-    record WorkflowFailedEvent(Exception ex, long workflowID) implements WorkflowEvent{}
+    record WorkflowFailedEvent(Throwable ex, long workflowID) implements WorkflowEvent{}
 
     record WorkflowPausedEvent(long workflowID) implements WorkflowEvent{}
 

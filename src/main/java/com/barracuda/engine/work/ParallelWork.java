@@ -42,4 +42,8 @@ public class ParallelWork extends AbstractWork {
     protected void workFailed(Exception ex) {
     }
 
+    @Override
+    public long id() {
+        return id;
+    }
 }

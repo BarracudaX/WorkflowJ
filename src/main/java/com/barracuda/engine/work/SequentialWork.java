@@ -92,4 +92,8 @@ public class SequentialWork extends AbstractWork {
         ioTask.execute();
     }
 
+    @Override
+    public long id() {
+        return id;
+    }
 }
