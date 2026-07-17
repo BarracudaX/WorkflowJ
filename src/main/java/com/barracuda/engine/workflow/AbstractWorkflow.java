@@ -44,7 +44,6 @@ public abstract class AbstractWorkflow implements Workflow {
     protected abstract void workflowFailed(Exception exception);
 
     private void executeWorkflow() {
-
         workflowStarting();
 
         var works = works();

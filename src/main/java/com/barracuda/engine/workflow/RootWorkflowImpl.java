@@ -2,9 +2,6 @@ package com.barracuda.engine.workflow;
 
 import com.barracuda.engine.domain.WorkflowStatus;
 import com.barracuda.engine.event.WorkflowEvent;
-import com.barracuda.engine.event.WorkflowEvent.WorkflowFailedEvent;
-import com.barracuda.engine.event.WorkflowEvent.WorkflowResumedEvent;
-import com.barracuda.engine.event.WorkflowEvent.WorkflowStartedEvent;
 import com.barracuda.engine.listener.WorkflowExecutionListener;
 import com.barracuda.engine.store.WorkflowStore;
 import com.barracuda.engine.work.Work;
@@ -55,13 +52,6 @@ public class RootWorkflowImpl extends AbstractWorkflow implements RootWorkflow{
 //        publishEvent(new WorkflowEvent.WorkflowCompletedEvent());
 
         workflowStatus.set(WorkflowStatus.COMPLETED);
-    }
-
-    @Override
-    protected void workFailed(Exception e, Work work) {
-//        publishEvent(new WorkflowFailedEvent());
-
-        workflowStatus.set(WorkflowStatus.FAILED);
     }
 
     @Override

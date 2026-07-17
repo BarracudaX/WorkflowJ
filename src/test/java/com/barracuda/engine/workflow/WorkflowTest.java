@@ -16,11 +16,10 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.*;
 
 @WorkflowUnitTest
-public class WorkflowTest {
+public class WorkflowTest extends AbstractWorkflowTest{
 
     @Mock
     private WorkflowStore storeMock;
@@ -59,5 +58,34 @@ public class WorkflowTest {
 
         assertThatCode(workflow::execute).hasCause(exception);
         assertThat(workflow.status()).isEqualTo(WorkflowStatus.FAILED);
+    }
+
+    @Test
+    void shouldNotBeAbleToRunWorkflowIfAlreadyRunning() {
+        virtualExecutorService.submit(workflow::execute);
+        waitUntilStarted(workflow);
+
+        assertThatThrownBy(workflow::execute).isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
+    void shouldNotBeAbleToRunWorkflowIfCompleted() {
+        virtualExecutorService.submit(workflow::execute);
+        waitUntilFinished(workflow);
+
+        assertThatThrownBy(workflow::execute).isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
+    void shouldBeAbleToStartWorkflowIfPaused() {
+        var workflowTask = virtualExecutorService.submit(workflow::execute);
+        waitUntilStarted(workflow);
+        workflowTask.cancel(true);
+        waitUntilPaused(workflow);
+
+        virtualExecutorService.submit(workflow::execute);
+
+        waitUntilStarted(workflow);
+        waitUntilFinished(workflow);
     }
 }
