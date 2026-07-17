@@ -2,7 +2,7 @@ package com.barracuda.engine.listener;
 
 import com.barracuda.engine.event.WorkflowEvent;
 
-public interface WorkflowExecutionListener {
+public interface WorkflowEventListener {
 
     void event(WorkflowEvent event);
 

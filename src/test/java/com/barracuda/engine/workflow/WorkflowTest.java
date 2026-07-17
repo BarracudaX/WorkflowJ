@@ -2,33 +2,16 @@ package com.barracuda.engine.workflow;
 
 import com.barracuda.engine.WorkflowUnitTest;
 import com.barracuda.engine.domain.WorkflowStatus;
-import com.barracuda.engine.store.WorkflowStore;
 import com.barracuda.engine.test.FailWork;
-import com.barracuda.engine.test.TestCpuTask;
-import com.barracuda.engine.work.SequentialWork;
-import com.barracuda.engine.work.Work;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mock;
 
 import java.time.Duration;
-import java.util.List;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 import static org.assertj.core.api.Assertions.*;
 
 @WorkflowUnitTest
 public class WorkflowTest extends AbstractWorkflowTest{
-
-    @Mock
-    private WorkflowStore storeMock;
-
-    private final Duration cpuTimeSlot = Duration.ofMillis(100);
-    private final ExecutorService cpuExecutorService = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
-    private final ExecutorService virtualExecutorService = Executors.newVirtualThreadPerTaskExecutor();
-    private final List<Work> works = List.of(new SequentialWork("TEST_SEQUENTIAL_WORK",1,List.of(new TestCpuTask("TEST_CPU_TASK",1,Duration.ofMillis(300)))));
-    private final Workflow workflow = new RootWorkflowImpl("TEST_NAME",1, cpuTimeSlot, cpuExecutorService,storeMock,works);
 
     @Test
     void shouldBeAbleToStartTheWorkflow() {
@@ -54,7 +37,7 @@ public class WorkflowTest extends AbstractWorkflowTest{
     @Test
     void workflowShouldFailIfWorkFails() {
         var exception = new RuntimeException("FAILED_WORK");
-        var workflow = new RootWorkflowImpl("FAIL_WORKFLOW", 1, cpuTimeSlot, cpuExecutorService, storeMock, List.of(new FailWork(exception)));
+        var workflow = withWork(new FailWork(exception));
 
         assertThatCode(workflow::execute).hasCause(exception);
         assertThat(workflow.status()).isEqualTo(WorkflowStatus.FAILED);

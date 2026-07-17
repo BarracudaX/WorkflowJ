@@ -1,8 +1,8 @@
 package com.barracuda.engine.workflow;
 
 import com.barracuda.engine.domain.WorkflowStatus;
-import com.barracuda.engine.event.WorkflowEvent;
-import com.barracuda.engine.listener.WorkflowExecutionListener;
+import com.barracuda.engine.event.WorkflowEventPublisher;
+import com.barracuda.engine.listener.WorkflowEventListener;
 import com.barracuda.engine.store.WorkflowStore;
 import com.barracuda.engine.work.Work;
 import lombok.ToString;
@@ -11,24 +11,23 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicReference;
 
 
 public class RootWorkflowImpl extends AbstractWorkflow implements RootWorkflow{
 
-
-    private final CopyOnWriteArrayList<WorkflowExecutionListener> listeners = new CopyOnWriteArrayList<>();
     private final WorkflowContext context;
     @ToString.Include
     private final AtomicReference<WorkflowStatus> workflowStatus = new AtomicReference<>(WorkflowStatus.INITIALIZED);
     private final List<Work> works = Collections.synchronizedList(new ArrayList<>());
+    private final WorkflowEventPublisher workflowEventPublisher;
 
-    public RootWorkflowImpl(String name, long id, Duration cpuTimeSlot, ExecutorService cpuExecutorService, WorkflowStore workflowStore, List<Work> works) {
+    public RootWorkflowImpl(String name, long id, Duration cpuTimeSlot, ExecutorService cpuExecutorService, WorkflowStore workflowStore, List<Work> works, WorkflowEventPublisher workflowEventPublisher) {
         super(name, id);
+        this.workflowEventPublisher = workflowEventPublisher;
         this.works.addAll(works);
-        this.context = new WorkflowContext(cpuExecutorService, cpuTimeSlot, this,workflowStore);
+        this.context = new WorkflowContext(cpuExecutorService, cpuTimeSlot, workflowEventPublisher,workflowStore);
     }
 
     @Override
@@ -82,8 +81,8 @@ public class RootWorkflowImpl extends AbstractWorkflow implements RootWorkflow{
     }
 
     @Override
-    public void registerListener(WorkflowExecutionListener listener){
-        listeners.add(listener);
+    public void registerListener(WorkflowEventListener listener){
+        workflowEventPublisher.registerListener(listener);
     }
 
     @Override
@@ -91,10 +90,4 @@ public class RootWorkflowImpl extends AbstractWorkflow implements RootWorkflow{
         return workflowStatus.get();
     }
 
-
-    public void publishEvent(WorkflowEvent event){
-        for(WorkflowExecutionListener listener : listeners){
-            listener.event(event);
-        }
-    }
 }
