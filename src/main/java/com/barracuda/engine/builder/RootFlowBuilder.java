@@ -1,6 +1,8 @@
-package com.barracuda.engine.flow;
+package com.barracuda.engine.builder;
 
 import com.barracuda.engine.chain.ChainNode;
+import com.barracuda.engine.flow.Flow;
+import com.barracuda.engine.flow.FlowImpl;
 
 import java.util.concurrent.ExecutorService;
 import java.util.function.Function;

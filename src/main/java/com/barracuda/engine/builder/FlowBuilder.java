@@ -1,8 +1,9 @@
-package com.barracuda.engine.flow;
+package com.barracuda.engine.builder;
 
 import com.barracuda.engine.chain.ChainNode;
 import com.barracuda.engine.chain.ParallelNode;
 import com.barracuda.engine.chain.TaskNode;
+import com.barracuda.engine.flow.Flow;
 import com.barracuda.engine.task.Task;
 
 import java.util.ArrayList;
