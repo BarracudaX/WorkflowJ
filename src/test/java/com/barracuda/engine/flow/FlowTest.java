@@ -2,7 +2,6 @@ package com.barracuda.engine.flow;
 
 import com.barracuda.engine.step.AbstractStep;
 import com.barracuda.engine.step.Step;
-import com.barracuda.engine.workflow.Workflow;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;

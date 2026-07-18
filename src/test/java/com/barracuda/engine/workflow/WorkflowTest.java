@@ -33,7 +33,7 @@ public class WorkflowTest {
     }
 
     private WorkflowBuilder workflow(){
-        return new WorkflowBuilder().flow(flow -> flow.step(new TestStep()));
+        return Workflow.workflow().flow(flow -> flow.step(new TestStep()));
     }
 
 
