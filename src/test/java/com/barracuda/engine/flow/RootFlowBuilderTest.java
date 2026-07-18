@@ -22,9 +22,9 @@ public class RootFlowBuilderTest {
                 .build();
 
         assertThat(flow.step()).isEqualTo(firstStep);
-        assertThat(flow.nextStep()).isEqualTo(secondStep);
-        assertThat(flow.nextStep().nextStep()).isEqualTo(thirdStep);
-        assertThat(flow.nextStep().nextStep().nextStep()).isNull();
+        assertThat(flow.step().nextStep()).isEqualTo(secondStep);
+        assertThat(flow.step().nextStep().nextStep()).isEqualTo(thirdStep);
+        assertThat(flow.step().nextStep().nextStep().nextStep()).isNull();
     }
 
         @Test
@@ -43,7 +43,7 @@ public class RootFlowBuilderTest {
         Flow flow = new RootFlowBuilder().step(step).build();
 
         assertThat(flow.step()).isEqualTo(step);
-        assertThat(flow.nextStep()).isNull();
+        assertThat(flow.step().nextStep()).isNull();
     }
 
     private static class FirstStep extends AbstractStep { }

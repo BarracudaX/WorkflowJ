@@ -6,6 +6,4 @@ public interface Flow {
 
     Step step();
 
-    Step nextStep();
-
 }

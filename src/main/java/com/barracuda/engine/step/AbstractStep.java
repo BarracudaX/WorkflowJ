@@ -1,6 +1,6 @@
 package com.barracuda.engine.step;
 
-public class AbstractStep implements Step {
+public abstract class AbstractStep implements Step {
 
     protected Step step;
 

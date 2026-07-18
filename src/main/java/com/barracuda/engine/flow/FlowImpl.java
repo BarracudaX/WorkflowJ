@@ -18,9 +18,4 @@ public class FlowImpl implements Flow {
         return step;
     }
 
-    @Override
-    public Step nextStep() {
-        return step.nextStep();
-    }
-
 }
