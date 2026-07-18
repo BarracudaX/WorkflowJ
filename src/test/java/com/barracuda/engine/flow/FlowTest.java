@@ -18,9 +18,9 @@ import static org.assertj.core.api.Assertions.*;
 @ExtendWith(OutputCaptureExtension.class)
 public class FlowTest {
 
-    private final ExecutorService cpuExecutor = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
-    private final ExecutorService virtualThreadExecutor = Executors.newVirtualThreadPerTaskExecutor();
-    private final RootFlowBuilder rootFlowBuilder = new RootFlowBuilder(cpuExecutor,virtualThreadExecutor);
+    private final ExecutorService cpuTaskExecutor = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
+    private final ExecutorService ioTaskExecutor = Executors.newVirtualThreadPerTaskExecutor();
+    private final RootFlowBuilder rootFlowBuilder = new RootFlowBuilder(cpuTaskExecutor, ioTaskExecutor);
 
     @Test
     void shouldExecuteTasksInSpecifiedOrder(CapturedOutput output) {
