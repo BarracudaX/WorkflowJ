@@ -31,9 +31,7 @@ public class RootFlowBuilderTest {
 
     @Test
     void shouldAllowCreationOfEmptyFlow() {
-
         assertThatCode(rootFlowBuilder::build).doesNotThrowAnyException();
-
     }
 
 

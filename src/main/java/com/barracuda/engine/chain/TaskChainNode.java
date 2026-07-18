@@ -5,14 +5,14 @@ import com.barracuda.engine.task.Task;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
-public class ChainNodeImpl<I,R> implements ChainNode{
+public class TaskChainNode<I,R> implements ChainNode{
 
     private final ChainNode next;
     private final Task<I,R> task;
     private final Supplier<I> taskInputSupplier;
     private final Consumer<R> taskOutputConsumer;
 
-    public ChainNodeImpl(ChainNode next, Task<I, R> task, Supplier<I> taskInputSupplier, Consumer<R> taskOutputConsumer) {
+    public TaskChainNode(ChainNode next, Task<I, R> task, Supplier<I> taskInputSupplier, Consumer<R> taskOutputConsumer) {
         this.next = next;
         this.task = task;
         this.taskInputSupplier = taskInputSupplier;
