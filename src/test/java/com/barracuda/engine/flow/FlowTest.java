@@ -111,6 +111,42 @@ public class FlowTest {
         assertThat(flow.state()).isEqualTo(FlowState.FAILED);
     }
 
+    @Test
+    void shouldAllowExecutingTasksInParallelWithSubWorkflows() {
+        var readinessLatch = new CountDownLatch(3);
+        var barrierLatch = new CountDownLatch(1);
+
+        var flow = rootFlowBuilder
+                .parallel(parallel ->
+                        parallel
+                                .subflow( subflow -> subflow.ioTask(new ParallelTask(readinessLatch,barrierLatch)))
+                                .subflow( subflow -> subflow.ioTask(new ParallelTask(readinessLatch,barrierLatch)))
+                                .subflow( subflow -> subflow.ioTask(new ParallelTask(readinessLatch,barrierLatch)))
+                ).build();
+
+        ioTaskExecutor.submit(flow::execute);
+
+        Awaitility.await().atMost(Duration.ofSeconds(1)).untilAsserted(readinessLatch::await);
+
+        barrierLatch.countDown();
+
+        Awaitility.await().atMost(Duration.ofSeconds(1)).untilAsserted(flow::state, state -> assertThat(state).isEqualTo(FlowState.COMPLETED));
+    }
+
+    private record ParallelTask(CountDownLatch notifyReadyLatch, CountDownLatch barrierLatch) implements Task<Void, Void> {
+
+        @Override
+            public Void execute(Void input) {
+                notifyReadyLatch.countDown();
+                try {
+                    barrierLatch.await();
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+                return null;
+            }
+        }
+
     private static class TaskCapturingThread implements Task<Void,Void>{
 
         private enum TaskThread{

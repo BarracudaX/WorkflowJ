@@ -1,6 +1,7 @@
 package com.barracuda.engine.flow;
 
 import com.barracuda.engine.chain.ChainNode;
+import com.barracuda.engine.chain.ParallelNode;
 import com.barracuda.engine.chain.TaskNode;
 import com.barracuda.engine.task.Task;
 
@@ -14,16 +15,28 @@ import java.util.function.Supplier;
 public abstract class FlowBuilder<T extends FlowBuilder<T>> {
 
     private final ExecutorService cpuExecutor;
-    private final ExecutorService virtualThreadExecutor;
+    private final ExecutorService ioExecutor;
     protected final List<Function<ChainNode,ChainNode>> chainNodes = new ArrayList<>();
 
-    protected FlowBuilder(ExecutorService cpuExecutor,ExecutorService virtualThreadExecutor) {
+    protected FlowBuilder(ExecutorService cpuExecutor,ExecutorService ioExecutor) {
         this.cpuExecutor = cpuExecutor;
-        this.virtualThreadExecutor = virtualThreadExecutor;
+        this.ioExecutor = ioExecutor;
+    }
+
+    public T parallel(Consumer<ParallelChainNodeBuilder> consumer) {
+        var builder = new ParallelChainNodeBuilder(cpuExecutor,ioExecutor);
+
+        consumer.accept(builder);
+
+        List<Flow> subflows = builder.subflows.stream().map(RootFlowBuilder::build).toList();
+
+        chainNodes.add((next) -> new ParallelNode(subflows,ioExecutor,next));
+
+        return self();
     }
 
     public <I, R> T ioTask(Task<I, R> task, Supplier<I> inputSupplier, Consumer<R> outputConsumer) {
-        chainNodes.add( (next) -> new TaskNode<>(next,task,inputSupplier,outputConsumer,virtualThreadExecutor));
+        chainNodes.add( (next) -> new TaskNode<>(next,task,inputSupplier,outputConsumer, ioExecutor));
         return self();
     }
 
