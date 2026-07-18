@@ -26,13 +26,8 @@ public abstract class FlowBuilder<T extends FlowBuilder<T>> {
      * @param task the configured task
      * @return this builder
      */
-    public T task(Task<Void, Void> task) {
-        chainNodes.add((next) -> new TaskChainNode<>(next,task,provideInput(),doNothingWithOutput()));
-        return self();
-    }
-
     public T runnableTask(Runnable task) {
-        chainNodes.add((next) -> new TaskChainNode<>(next, (_) -> { task.run(); return null; },provideInput(),doNothingWithOutput()));
+        task(Task.fromRunnable(task), provideInput(), doNothingWithOutput());
         return self();
     }
 
