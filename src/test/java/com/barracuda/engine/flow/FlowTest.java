@@ -37,6 +37,15 @@ public class FlowTest {
         assertThatThrownBy(() -> new RootFlowBuilder().step(null)).isInstanceOf(IllegalArgumentException.class);
     }
 
+    @Test
+    void settingOnlySingleStepShouldResultInCycle() {
+        FirstStep step = new FirstStep();
+        Flow flow = new RootFlowBuilder().step(step).build();
+
+        assertThat(flow.step()).isEqualTo(step);
+        assertThat(flow.nextStep()).isNull();
+    }
+
     private static class FirstStep extends AbstractStep { }
     private static class SecondStep extends AbstractStep { }
     private static class ThirdStep extends AbstractStep { }

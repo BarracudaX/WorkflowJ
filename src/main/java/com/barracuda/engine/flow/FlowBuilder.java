@@ -15,9 +15,10 @@ public abstract class FlowBuilder<T extends FlowBuilder<T>> {
         if(firstStep == null) {
             firstStep = step;
             currentStep = step;
+        }else{
+            currentStep.setNext(step);
+            currentStep = step;
         }
-        currentStep.setNext(step);
-        currentStep = step;
         return self();
     }
 
