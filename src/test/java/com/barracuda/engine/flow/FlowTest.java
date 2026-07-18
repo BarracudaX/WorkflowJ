@@ -197,7 +197,7 @@ public class FlowTest {
     }
 
     @Test
-    void shouldCancelParallelSubflowsIfOneFails() throws ExecutionException, InterruptedException {
+    void shouldCancelParallelSubflowsIfOneFails() {
         RuntimeException exception = new RuntimeException("I fail,lol");
         var failTask = new FailOnCommandTask(exception);
         var parallelTask2 = new BlockingTask();
