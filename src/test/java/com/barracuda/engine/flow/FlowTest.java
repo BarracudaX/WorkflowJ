@@ -23,7 +23,7 @@ public class FlowTest {
     private final RootFlowBuilder rootFlowBuilder = new RootFlowBuilder(cpuExecutor,virtualThreadExecutor);
 
     @Test
-    void shouldSpecifyTasksThatExecute(CapturedOutput output) {
+    void shouldExecuteTasksInSpecifiedOrder(CapturedOutput output) {
         Flow flow = rootFlowBuilder
                 .runnableTask(() -> System.out.println("1"))
                 .runnableTask(() -> System.out.println("2"))
