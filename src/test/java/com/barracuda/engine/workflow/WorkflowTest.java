@@ -43,6 +43,16 @@ public class WorkflowTest {
         assertThatThrownBy(() -> workflow().build()).isInstanceOf(NullPointerException.class);
     }
 
+    @Test
+    void shouldThrowIAEWhenProvidingNullName() {
+        assertThatThrownBy(() -> workflow().name(null)).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void shouldThrowIAEWhenProvidingBlankName() {
+        assertThatThrownBy(() -> workflow().name(" ")).isInstanceOf(IllegalArgumentException.class);
+    }
+
     private static class FirstStep extends AbstractStep { }
     private static class SecondStep extends AbstractStep { }
     private static class ThirdStep extends AbstractStep { }

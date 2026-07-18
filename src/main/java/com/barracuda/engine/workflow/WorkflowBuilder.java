@@ -12,6 +12,13 @@ public class WorkflowBuilder {
     private Step currentStep;
 
     public WorkflowBuilder name(String name) {
+        if (name == null) {
+            throw new IllegalArgumentException("name cannot be null");
+        }
+
+        if (name.isBlank()) {
+            throw new IllegalArgumentException("name cannot be blank");
+        }
         this.name = name;
         return this;
     }
