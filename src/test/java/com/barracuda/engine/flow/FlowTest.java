@@ -13,7 +13,7 @@ import java.util.concurrent.Executors;
 import static org.assertj.core.api.Assertions.*;
 
 @ExtendWith(OutputCaptureExtension.class)
-public class RootFlowBuilderTest {
+public class FlowTest {
 
     private final ExecutorService cpuExecutor = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
     private final ExecutorService virtualThreadExecutor = Executors.newVirtualThreadPerTaskExecutor();
