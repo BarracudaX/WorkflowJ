@@ -3,7 +3,6 @@ package com.barracuda.engine.flow;
 import com.barracuda.engine.task.Task;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mockito;
 import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
 
@@ -11,7 +10,6 @@ import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 import static org.assertj.core.api.Assertions.*;
-import static org.mockito.Mockito.mock;
 
 @ExtendWith(OutputCaptureExtension.class)
 public class RootFlowBuilderTest {
@@ -21,9 +19,9 @@ public class RootFlowBuilderTest {
     @Test
     void shouldSpecifyTasksThatExecuteSequentially(CapturedOutput output) {
         Flow flow = rootFlowBuilder
-                .step(new PrintTask(),provide("1"), nothing())
-                .step(new PrintTask(),provide("2"),nothing())
-                .step(new PrintTask(),provide("3"),nothing())
+                .step(new PrintTask("1"))
+                .step(new PrintTask("2"))
+                .step(new PrintTask("3"))
                 .build();
 
         flow.execute();
@@ -38,22 +36,14 @@ public class RootFlowBuilderTest {
 
     }
 
-    private static <T> Consumer<T> nothing(){
-        return t -> {};
-    }
 
-    private static <T>Supplier<T> provide(T t){
-        return () -> t;
-    }
-
-    private static class PrintTask implements Task<String, Void> {
-
+    private record PrintTask(String str) implements Task<Void, Void> {
 
         @Override
-        public Void execute(String str) {
-            System.out.println(str);
-            return null;
+            public Void execute(Void input) {
+                System.out.println(str);
+                return null;
+            }
         }
-    }
 
 }

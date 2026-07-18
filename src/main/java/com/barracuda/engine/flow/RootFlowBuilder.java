@@ -1,7 +1,6 @@
 package com.barracuda.engine.flow;
 
 import com.barracuda.engine.chain.ChainNode;
-import com.barracuda.engine.chain.ChainNodeImpl;
 
 import java.util.function.Function;
 
