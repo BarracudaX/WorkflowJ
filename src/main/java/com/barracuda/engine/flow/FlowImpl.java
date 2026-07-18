@@ -12,8 +12,9 @@ public class FlowImpl implements Flow {
         this.step = Objects.requireNonNull(step);
     }
 
+
     @Override
-    public Step firstStep() {
+    public Step step() {
         return step;
     }
 

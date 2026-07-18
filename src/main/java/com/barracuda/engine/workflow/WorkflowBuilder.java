@@ -1,15 +1,17 @@
 package com.barracuda.engine.workflow;
 
+import com.barracuda.engine.flow.FlowBuilder;
 import com.barracuda.engine.flow.FlowImpl;
+import com.barracuda.engine.flow.RootFlowBuilder;
 import com.barracuda.engine.step.Step;
 
 import java.util.Objects;
+import java.util.function.Consumer;
 
 public class WorkflowBuilder {
 
     private String name;
-    private Step firstStep;
-    private Step currentStep;
+    private final RootFlowBuilder flowBuilder = new RootFlowBuilder();
 
     public WorkflowBuilder name(String name) {
         if (name == null) {
@@ -23,22 +25,14 @@ public class WorkflowBuilder {
         return this;
     }
 
-    public WorkflowBuilder step(Step step) {
-        if(step == null) {
-            throw new IllegalArgumentException("step cannot be null");
-        }
+    public WorkflowBuilder flow(Consumer<FlowBuilder<?>> flowBuilderConsumer) {
+        flowBuilderConsumer.accept(flowBuilder);
 
-        if(firstStep == null) {
-            firstStep = step;
-            currentStep = step;
-        }
-        currentStep.setNext(step);
-        currentStep = step;
         return this;
     }
 
     public Workflow build() {
-        return new Workflow(name,new FlowImpl(firstStep));
+        return new Workflow(name,flowBuilder.build());
     }
 
 
