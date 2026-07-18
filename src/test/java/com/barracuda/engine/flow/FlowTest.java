@@ -56,7 +56,7 @@ public class FlowTest {
         VIRTUAL,PLATFORM,NONE
     }
 
-    private class TaskCapturingThread implements Task<Void,Void>{
+    private static class TaskCapturingThread implements Task<Void,Void>{
 
         @Getter
         private volatile TaskThread taskThread = TaskThread.NONE;
