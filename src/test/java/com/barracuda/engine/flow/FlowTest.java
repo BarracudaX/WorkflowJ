@@ -169,10 +169,24 @@ public class FlowTest {
         Awaitility.await().atMost(Duration.ofSeconds(1)).untilAsserted(task::state,state -> assertThat(state).isEqualTo(BlockingTask.TaskState.INTERRUPTED));
     }
 
-    @Disabled("TODO. Remove TaskNode return statement inside catch of interrupted exception to cause a race condition that sometimes makes the next task execute when the current is interrupted. This is caused by the fact that inside ParallelTask task.get() can return without ever submitting the task.")
     @Test
     void shouldNotExecuteNextTaskWhenInterrupted() {
+        var firstTask = new BlockingTask();
+        var secondTask = new BlockingTask();
 
+        var flow = rootFlowBuilder
+                .ioTask(firstTask)
+                .ioTask(secondTask)
+                .build();
+
+        var flowTask = ioTaskExecutor.submit(flow::execute);
+
+        Awaitility.await().atMost(Duration.ofSeconds(1)).untilAsserted(flow::state,state -> assertThat(state).isEqualTo(FlowState.RUNNING));
+
+        flowTask.cancel(true);
+        Awaitility.await().atMost(Duration.ofSeconds(1)).untilAsserted(flow::state,state -> assertThat(state).isEqualTo(FlowState.PAUSED));
+
+        assertThat(secondTask.state()).isEqualTo(BlockingTask.TaskState.CREATED);
     }
 
     @Disabled("TODO")
@@ -228,8 +242,8 @@ public class FlowTest {
 
         @Override
         public Void execute(Void input) {
+            state.set(TaskState.WAITING);
             try {
-                state.set(TaskState.WAITING);
                 latch.await();
             } catch (InterruptedException e) {
                 state.set(TaskState.INTERRUPTED);
