@@ -3,12 +3,13 @@ package com.barracuda.engine.flow;
 import com.barracuda.engine.builder.RootFlowBuilder;
 import com.barracuda.engine.task.Task;
 import lombok.Getter;
+import org.awaitility.Awaitility;
+import org.awaitility.core.ConditionTimeoutException;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
-import org.testcontainers.shaded.org.awaitility.Awaitility;
 
 import java.time.Duration;
 import java.util.concurrent.CountDownLatch;
@@ -161,13 +162,13 @@ public class FlowTest {
         var flowTask = ioTaskExecutor.submit(flow::execute);
 
         waitUntilRunning(flow);
-        Awaitility.await().atMost(Duration.ofSeconds(1)).untilAsserted(task::state,state -> assertThat(state).isEqualTo(BlockingTask.TaskState.RUNNING));
+        task.waitUntilRunning();
 
         flowTask.cancel(true);
 
         waitUntilPaused(flow);
 
-        Awaitility.await().atMost(Duration.ofSeconds(1)).untilAsserted(task::state,state -> assertThat(state).isEqualTo(BlockingTask.TaskState.INTERRUPTED));
+        task.waitUntilInterrupted();
     }
 
     @Test
@@ -213,27 +214,39 @@ public class FlowTest {
         var flowTask = ioTaskExecutor.submit(flow::execute);
 
         waitUntilRunning(flow);
-        Awaitility.await().atMost(Duration.ofSeconds(1)).untilAsserted(parallelTask2::state,state ->  assertThat(state).isEqualTo(BlockingTask.TaskState.RUNNING));
-        Awaitility.await().atMost(Duration.ofSeconds(1)).untilAsserted(parallelTask3::state,state ->  assertThat(state).isEqualTo(BlockingTask.TaskState.RUNNING));
+        parallelTask2.waitUntilRunning();
+        parallelTask3.waitUntilRunning();
 
         failTask.failNow();
 
-        Awaitility.await().atMost(Duration.ofSeconds(1)).untilAsserted(parallelTask2::state,state ->  assertThat(state).isEqualTo(BlockingTask.TaskState.INTERRUPTED));
-        Awaitility.await().atMost(Duration.ofSeconds(1)).untilAsserted(parallelTask3::state,state ->  assertThat(state).isEqualTo(BlockingTask.TaskState.INTERRUPTED));
+        parallelTask2.waitUntilInterrupted();
+        parallelTask3.waitUntilInterrupted();
 
         assertThatCode(flowTask::get).hasCause(exception);
     }
 
     private void waitUntilRunning(Flow flow) {
-        Awaitility.await().atMost(Duration.ofSeconds(1)).untilAsserted(flow::state,state -> assertThat(state).isEqualTo(FlowState.RUNNING));
+        try{
+            Awaitility.await().atMost(Duration.ofSeconds(1)).untilAsserted(flow::state,state -> assertThat(state).isEqualTo(FlowState.RUNNING));
+        }catch (ConditionTimeoutException ex){
+            throw new AssertionError("Failed waiting for flow to start running.",ex);
+        }
     }
 
     private void waitUntilPaused(Flow flow) {
-        Awaitility.await().atMost(Duration.ofSeconds(1)).untilAsserted(flow::state,state -> assertThat(state).isEqualTo(FlowState.PAUSED));
+        try {
+            Awaitility.await().atMost(Duration.ofSeconds(1)).untilAsserted(flow::state,state -> assertThat(state).isEqualTo(FlowState.PAUSED));
+        } catch (ConditionTimeoutException ex){
+            throw new AssertionError("Failed waiting for flow to pause.",ex);
+        }
     }
 
     private void waitUntilCompleted(Flow flow) {
-        Awaitility.await().atMost(Duration.ofSeconds(1)).untilAsserted(flow::state, state -> assertThat(state).isEqualTo(FlowState.COMPLETED));
+        try {
+            Awaitility.await().atMost(Duration.ofSeconds(1)).untilAsserted(flow::state, state -> assertThat(state).isEqualTo(FlowState.COMPLETED));
+        } catch (ConditionTimeoutException ex){
+            throw new AssertionError("Failed waiting for flow to complete.",ex);
+        }
     }
 
     //create wait methods to make test code more readable
@@ -275,6 +288,8 @@ public class FlowTest {
 
     private static class BlockingTask implements Task<Void, Void> {
 
+
+
         private enum TaskState {
             CREATED, RUNNING,COMPLETED,INTERRUPTED
         }
@@ -302,6 +317,21 @@ public class FlowTest {
             return state.get();
         }
 
+        public void waitUntilRunning(){
+            try {
+                Awaitility.await().atMost(Duration.ofSeconds(1)).untilAsserted(this::state,state -> assertThat(state).isEqualTo(TaskState.RUNNING));
+            } catch (ConditionTimeoutException ex) {
+                throw new AssertionError("Failed waiting for the blocking task to start running.",ex);
+            }
+        }
+
+        public void waitUntilInterrupted() {
+            try {
+                Awaitility.await().atMost(Duration.ofSeconds(1)).untilAsserted(this::state,state -> assertThat(state).isEqualTo(TaskState.INTERRUPTED));
+            } catch (ConditionTimeoutException ex) {
+                throw new AssertionError("Failed waiting for the blocking task to get interrupted.",ex);
+            }
+        }
     }
 
     private static class FailOnCommandTask implements Task<Void,Void>{
