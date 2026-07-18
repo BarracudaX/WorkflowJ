@@ -45,9 +45,11 @@ public class FlowTest {
     }
 
     @Test
-    void shouldExecuteIOTasksOnVirtualThreadAndCpuTasksOnPlatformThreads() {
+    void shouldExecuteIoAndCpuTasksOnDifferentExecutors() {
         TaskCapturingThread ioTask = new TaskCapturingThread();
         TaskCapturingThread cpuTask = new TaskCapturingThread();
+
+        //root flow builder is configured with virtual executor for io tasks and fixed executor for cpu tasks.
         Flow flow = rootFlowBuilder
                 .ioTask(ioTask)
                 .cpuTask(cpuTask)
