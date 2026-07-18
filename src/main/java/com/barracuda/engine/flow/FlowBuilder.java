@@ -33,13 +33,11 @@ public abstract class FlowBuilder<T extends FlowBuilder<T>> {
     }
 
     public <I, R> T cpuTask(Task<I, R> task) {
-        cpuTask(task, nullSupplier(), noopConsumer());
-        return self();
+        return cpuTask(task, nullSupplier(), noopConsumer());
     }
 
     public <I, R> T ioTask(Task<I, R> task) {
-        ioTask(task, nullSupplier(), noopConsumer());
-        return self();
+        return ioTask(task, nullSupplier(), noopConsumer());
     }
 
     /**
@@ -50,8 +48,7 @@ public abstract class FlowBuilder<T extends FlowBuilder<T>> {
      * @return this builder
      */
     public T runnableTask(Runnable task) {
-        ioTask(Task.fromRunnable(task), nullSupplier(), noopConsumer());
-        return self();
+        return ioTask(Task.fromRunnable(task), nullSupplier(), noopConsumer());
     }
 
     private static <T> Consumer<T> noopConsumer(){
