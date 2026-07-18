@@ -14,7 +14,7 @@ public abstract class FlowBuilder<T extends FlowBuilder<T>> {
 
     protected final List<Function<ChainNode,ChainNode>> chainNodes = new ArrayList<>();
 
-    public <I, R> T step(Task<I, R> task, Supplier<I> inputSupplier, Consumer<R> outputConsumer) {
+    public <I, R> T task(Task<I, R> task, Supplier<I> inputSupplier, Consumer<R> outputConsumer) {
         chainNodes.add( (next) -> new TaskChainNode<>(next,task,inputSupplier,outputConsumer));
         return self();
     }
@@ -26,8 +26,13 @@ public abstract class FlowBuilder<T extends FlowBuilder<T>> {
      * @param task the configured task
      * @return this builder
      */
-    public T step(Task<Void, Void> task) {
+    public T task(Task<Void, Void> task) {
         chainNodes.add((next) -> new TaskChainNode<>(next,task,provideInput(),doNothingWithOutput()));
+        return self();
+    }
+
+    public T runnableTask(Runnable task) {
+        chainNodes.add((next) -> new TaskChainNode<>(next, (_) -> { task.run(); return null; },provideInput(),doNothingWithOutput()));
         return self();
     }
 

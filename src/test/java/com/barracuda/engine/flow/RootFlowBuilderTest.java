@@ -19,9 +19,9 @@ public class RootFlowBuilderTest {
     @Test
     void shouldSpecifyTasksThatExecuteSequentially(CapturedOutput output) {
         Flow flow = rootFlowBuilder
-                .step(new PrintTask("1"))
-                .step(new PrintTask("2"))
-                .step(new PrintTask("3"))
+                .runnableTask(() -> System.out.println("1") )
+                .runnableTask(() -> System.out.println("2"))
+                .runnableTask(() -> System.out.println("3"))
                 .build();
 
         flow.execute();
@@ -36,7 +36,6 @@ public class RootFlowBuilderTest {
 
 
     private record PrintTask(String str) implements Task<Void, Void> {
-
         @Override
             public Void execute(Void input) {
                 System.out.println(str);
