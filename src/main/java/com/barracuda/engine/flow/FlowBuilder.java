@@ -1,21 +1,48 @@
 package com.barracuda.engine.flow;
 
 import com.barracuda.engine.chain.ChainNode;
-import com.barracuda.engine.chain.TaskChainNode;
+import com.barracuda.engine.chain.AbstractTaskNode;
+import com.barracuda.engine.chain.CpuTaskNode;
+import com.barracuda.engine.chain.IoTaskNode;
 import com.barracuda.engine.task.Task;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
 public abstract class FlowBuilder<T extends FlowBuilder<T>> {
 
+    private final ExecutorService cpuExecutor;
+    private final ExecutorService virtualThreadExecutor;
     protected final List<Function<ChainNode,ChainNode>> chainNodes = new ArrayList<>();
 
-    public <I, R> T task(Task<I, R> task, Supplier<I> inputSupplier, Consumer<R> outputConsumer) {
-        chainNodes.add( (next) -> new TaskChainNode<>(next,task,inputSupplier,outputConsumer));
+    protected FlowBuilder(ExecutorService cpuExecutor,ExecutorService virtualThreadExecutor) {
+        this.cpuExecutor = cpuExecutor;
+        this.virtualThreadExecutor = virtualThreadExecutor;
+    }
+
+    public <I, R> T ioTask(Task<I, R> task, Supplier<I> inputSupplier, Consumer<R> outputConsumer) {
+        chainNodes.add( (next) -> new IoTaskNode<>(next,task,inputSupplier,outputConsumer,virtualThreadExecutor));
+        return self();
+    }
+
+    public <I, R> T cpuTask(Task<I, R> task, Supplier<I> inputSupplier, Consumer<R> outputConsumer) {
+        chainNodes.add( (next) -> new CpuTaskNode<>(next,task,inputSupplier,outputConsumer,cpuExecutor));
+        return self();
+    }
+
+    public <I, R> T cpuTask(Task<I, R> task) {
+        cpuTask(task, nullSupplier(), noopConsumer());
+        return self();
+    }
+
+    public <I, R> T ioTask(Task<I, R> task) {
+        ioTask(task, nullSupplier(), noopConsumer());
         return self();
     }
 
@@ -27,15 +54,15 @@ public abstract class FlowBuilder<T extends FlowBuilder<T>> {
      * @return this builder
      */
     public T runnableTask(Runnable task) {
-        task(Task.fromRunnable(task), provideInput(), doNothingWithOutput());
+        ioTask(Task.fromRunnable(task), nullSupplier(), noopConsumer());
         return self();
     }
 
-    private static <T> Consumer<T> doNothingWithOutput(){
+    private static <T> Consumer<T> noopConsumer(){
         return _ -> {};
     }
 
-    private static <T>Supplier<T> provideInput(){
+    private static <T>Supplier<T> nullSupplier(){
         return () -> (T) null;
     }
 
