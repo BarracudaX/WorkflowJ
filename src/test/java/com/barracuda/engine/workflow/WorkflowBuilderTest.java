@@ -7,7 +7,7 @@ import org.junit.jupiter.api.Test;
 import static org.assertj.core.api.Assertions.*;
 
 @WorkflowUnitTest
-public class WorkflowTest {
+public class WorkflowBuilderTest {
 
     @Test
     void shouldBuildWorkflowWithSpecifiedName() {
