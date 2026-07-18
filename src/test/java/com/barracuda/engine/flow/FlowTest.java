@@ -76,7 +76,7 @@ public class FlowTest {
 
         ioTaskExecutor.submit(flow::execute);
 
-        Awaitility.await().atMost(Duration.ofSeconds(1)).untilAsserted(flow::state, state -> assertThat(state).isEqualTo(FlowState.RUNNING));
+    waitUntilRunning(flow);
     }
 
     @Test
@@ -87,7 +87,7 @@ public class FlowTest {
         ioTaskExecutor.submit(flow::execute);
         task.finish();
 
-        Awaitility.await().atMost(Duration.ofSeconds(1)).untilAsserted(flow::state, state -> assertThat(state).isEqualTo(FlowState.COMPLETED));
+        waitUntilCompleted(flow);
     }
 
     @Test
@@ -96,7 +96,7 @@ public class FlowTest {
         var flow = rootFlowBuilder.ioTask(task).build();
 
         ioTaskExecutor.submit(flow::execute);
-        Awaitility.await().atMost(Duration.ofSeconds(1)).untilAsserted(flow::state, state -> assertThat(state).isEqualTo(FlowState.RUNNING));
+        waitUntilRunning(flow);
 
         Awaitility.await().atMost(Duration.ofSeconds(1)).untilAsserted(() -> assertThatThrownBy(flow::execute).isInstanceOf(IllegalStateException.class));
     }
@@ -130,7 +130,7 @@ public class FlowTest {
 
         barrierLatch.countDown();
 
-        Awaitility.await().atMost(Duration.ofSeconds(1)).untilAsserted(flow::state, state -> assertThat(state).isEqualTo(FlowState.COMPLETED));
+        waitUntilCompleted(flow);
     }
 
     @Test
@@ -142,11 +142,11 @@ public class FlowTest {
 
         var flowTask = ioTaskExecutor.submit(flow::execute);
 
-        Awaitility.await().atMost(Duration.ofSeconds(1)).untilAsserted(flow::state,state -> assertThat(state).isEqualTo(FlowState.RUNNING));
+        waitUntilRunning(flow);
 
         flowTask.cancel(true);
 
-        Awaitility.await().atMost(Duration.ofSeconds(1)).untilAsserted(flow::state,state -> assertThat(state).isEqualTo(FlowState.PAUSED));
+        waitUntilPaused(flow);
     }
 
     @Test
@@ -159,12 +159,12 @@ public class FlowTest {
 
         var flowTask = ioTaskExecutor.submit(flow::execute);
 
-        Awaitility.await().atMost(Duration.ofSeconds(1)).untilAsserted(flow::state,state -> assertThat(state).isEqualTo(FlowState.RUNNING));
+        waitUntilRunning(flow);
         Awaitility.await().atMost(Duration.ofSeconds(1)).untilAsserted(task::state,state -> assertThat(state).isEqualTo(BlockingTask.TaskState.WAITING));
 
         flowTask.cancel(true);
 
-        Awaitility.await().atMost(Duration.ofSeconds(1)).untilAsserted(flow::state,state -> assertThat(state).isEqualTo(FlowState.PAUSED));
+        waitUntilPaused(flow);
 
         Awaitility.await().atMost(Duration.ofSeconds(1)).untilAsserted(task::state,state -> assertThat(state).isEqualTo(BlockingTask.TaskState.INTERRUPTED));
     }
@@ -181,10 +181,10 @@ public class FlowTest {
 
         var flowTask = ioTaskExecutor.submit(flow::execute);
 
-        Awaitility.await().atMost(Duration.ofSeconds(1)).untilAsserted(flow::state,state -> assertThat(state).isEqualTo(FlowState.RUNNING));
+        waitUntilRunning(flow);
 
         flowTask.cancel(true);
-        Awaitility.await().atMost(Duration.ofSeconds(1)).untilAsserted(flow::state,state -> assertThat(state).isEqualTo(FlowState.PAUSED));
+        waitUntilPaused(flow);
 
         assertThat(secondTask.state()).isEqualTo(BlockingTask.TaskState.CREATED);
     }
@@ -193,6 +193,18 @@ public class FlowTest {
     @Test
     void shouldHaveFailedStateIfParallelSubflowFailsWithException(){
 
+    }
+
+    private void waitUntilRunning(Flow flow) {
+        Awaitility.await().atMost(Duration.ofSeconds(1)).untilAsserted(flow::state,state -> assertThat(state).isEqualTo(FlowState.RUNNING));
+    }
+
+    private void waitUntilPaused(Flow flow) {
+        Awaitility.await().atMost(Duration.ofSeconds(1)).untilAsserted(flow::state,state -> assertThat(state).isEqualTo(FlowState.PAUSED));
+    }
+
+    private void waitUntilCompleted(Flow flow) {
+        Awaitility.await().atMost(Duration.ofSeconds(1)).untilAsserted(flow::state, state -> assertThat(state).isEqualTo(FlowState.COMPLETED));
     }
 
     //create wait methods to make test code more readable
@@ -235,7 +247,7 @@ public class FlowTest {
     private static class BlockingTask implements Task<Void, Void> {
 
         private enum TaskState {
-            CREATED,WAITING,COMPLETED,INTERRUPTED;
+            CREATED,WAITING,COMPLETED,INTERRUPTED
         }
         private final AtomicReference<TaskState> state = new AtomicReference<>(TaskState.CREATED);
         private final CountDownLatch latch = new CountDownLatch(1);
