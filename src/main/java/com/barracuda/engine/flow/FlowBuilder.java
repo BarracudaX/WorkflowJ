@@ -20,7 +20,7 @@ public abstract class FlowBuilder<T extends FlowBuilder<T>> {
     }
 
     public <I, R> T step(Task<I, R> task) {
-        chainNodes.add((next) -> new ChainNodeImpl<>(next,task,provideInput(null),doNothingWithOutput()));
+        chainNodes.add((next) -> new ChainNodeImpl<>(next,task,provideInput(),doNothingWithOutput()));
         return self();
     }
 
@@ -28,8 +28,8 @@ public abstract class FlowBuilder<T extends FlowBuilder<T>> {
         return _ -> {};
     }
 
-    private static <T>Supplier<T> provideInput(T t){
-        return () -> t;
+    private static <T>Supplier<T> provideInput(){
+        return () -> (T) null;
     }
 
     protected abstract T self();
