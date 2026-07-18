@@ -1,7 +1,6 @@
 package com.barracuda.engine.workflow;
 
 import com.barracuda.engine.WorkflowUnitTest;
-import com.barracuda.engine.step.AbstractStep;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.*;
@@ -33,11 +32,8 @@ public class WorkflowBuilderTest {
     }
 
     private WorkflowBuilder workflow(){
-        return Workflow.workflow().flow(flow -> flow.step(new TestStep()));
+        return Workflow.workflow();
     }
-
-
-    private static class TestStep extends AbstractStep {}
 
 
 }

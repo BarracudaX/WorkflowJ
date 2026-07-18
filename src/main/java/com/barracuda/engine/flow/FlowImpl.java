@@ -1,21 +1,18 @@
 package com.barracuda.engine.flow;
 
-import com.barracuda.engine.step.Step;
-
-import java.util.Objects;
+import com.barracuda.engine.chain.ChainNode;
 
 public class FlowImpl implements Flow {
 
-    private final Step step;
+    private final ChainNode chainNode;
 
-    public FlowImpl(Step step) {
-        this.step = Objects.requireNonNull(step);
+    public FlowImpl(ChainNode chainNode) {
+        this.chainNode = chainNode;
     }
 
 
     @Override
-    public Step step() {
-        return step;
+    public void execute() {
+        chainNode.execute();
     }
-
 }

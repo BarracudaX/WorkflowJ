@@ -1,52 +1,59 @@
 package com.barracuda.engine.flow;
 
-import com.barracuda.engine.step.AbstractStep;
-import com.barracuda.engine.step.Step;
+import com.barracuda.engine.task.Task;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mockito;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
 
+import static org.assertj.core.api.Assertions.*;
+import static org.mockito.Mockito.mock;
+
+@ExtendWith(OutputCaptureExtension.class)
 public class RootFlowBuilderTest {
 
-    @Test
-    void shouldBuildFlowWithProvidedExecutionChain() {
-        Step firstStep = new FirstStep();
-        Step secondStep = new SecondStep();
-        Step thirdStep = new ThirdStep();
+    private final RootFlowBuilder rootFlowBuilder = new RootFlowBuilder();
 
-        Flow flow = new RootFlowBuilder()
-                .step(firstStep)
-                .step(secondStep)
-                .step(thirdStep)
+    @Test
+    void shouldSpecifyTasksThatExecuteSequentially(CapturedOutput output) {
+        Flow flow = rootFlowBuilder
+                .step(new PrintTask(),provide("1"), nothing())
+                .step(new PrintTask(),provide("2"),nothing())
+                .step(new PrintTask(),provide("3"),nothing())
                 .build();
 
-        assertThat(flow.step()).isEqualTo(firstStep);
-        assertThat(flow.step().nextStep()).isEqualTo(secondStep);
-        assertThat(flow.step().nextStep().nextStep()).isEqualTo(thirdStep);
-        assertThat(flow.step().nextStep().nextStep().nextStep()).isNull();
-    }
+        flow.execute();
 
-        @Test
-    void shouldThrowNPEWhenBuildingFlowWithoutAnyStep() {
-        assertThatThrownBy(() -> new RootFlowBuilder().build()).isInstanceOf(NullPointerException.class);
+        assertThat(output.getAll().lines().toList()).containsExactly("1", "2", "3");
     }
 
     @Test
-    void shouldThrowIAEWhenProvidingNullStep() {
-        assertThatThrownBy(() -> new RootFlowBuilder().step(null)).isInstanceOf(IllegalArgumentException.class);
+    void shouldAllowCreationOfEmptyFlow() {
+
+        assertThatCode(rootFlowBuilder::build).doesNotThrowAnyException();
+
     }
 
-    @Test
-    void settingOnlySingleStepShouldResultInCycle() {
-        FirstStep step = new FirstStep();
-        Flow flow = new RootFlowBuilder().step(step).build();
-
-        assertThat(flow.step()).isEqualTo(step);
-        assertThat(flow.step().nextStep()).isNull();
+    private static <T> Consumer<T> nothing(){
+        return t -> {};
     }
 
-    private static class FirstStep extends AbstractStep { }
-    private static class SecondStep extends AbstractStep { }
-    private static class ThirdStep extends AbstractStep { }
+    private static <T>Supplier<T> provide(T t){
+        return () -> t;
+    }
+
+    private static class PrintTask implements Task<String, Void> {
+
+
+        @Override
+        public Void execute(String str) {
+            System.out.println(str);
+            return null;
+        }
+    }
+
 }
