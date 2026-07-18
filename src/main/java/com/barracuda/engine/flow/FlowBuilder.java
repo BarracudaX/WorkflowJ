@@ -30,7 +30,7 @@ public abstract class FlowBuilder<T extends FlowBuilder<T>> {
 
         List<Flow> subflows = builder.subflows.stream().map(RootFlowBuilder::build).toList();
 
-        chainNodes.add((next) -> new ParallelNode(subflows,ioExecutor,next));
+        chainNodes.add((next) -> new ParallelNode(subflows,next));
 
         return self();
     }

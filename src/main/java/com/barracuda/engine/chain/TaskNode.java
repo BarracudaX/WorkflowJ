@@ -4,6 +4,7 @@ import com.barracuda.engine.task.Task;
 
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
@@ -25,27 +26,34 @@ public class TaskNode<I,R> implements ChainNode{
 
     @Override
     public void execute() {
-
         I input = taskInputSupplier.get();
 
-        R output = null;
+        Future<R> taskResult = null;
+        R result = null;
         try {
-            output = executor.submit(() -> task.execute(input)).get();
+             taskResult = executor.submit(() -> task.execute(input));
+             result = taskResult.get();
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
+            taskResult.cancel(true);
+            return;
         } catch (ExecutionException e) {
-            if(e.getCause() instanceof RuntimeException runtimeException) {
-                throw runtimeException;
-            }
-            throw new RuntimeException(e);
+            handleException(e);
         }
 
-        taskOutputConsumer.accept(output);
+        taskOutputConsumer.accept(result);
 
         if (next != null) {
             next.execute();
         }
 
+    }
+
+    private void handleException(ExecutionException e) {
+        if(e.getCause() instanceof RuntimeException runtimeException) {
+            throw runtimeException;
+        }
+        throw new RuntimeException(e);
     }
 
 }

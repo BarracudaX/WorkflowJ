@@ -3,36 +3,41 @@ package com.barracuda.engine.chain;
 import com.barracuda.engine.flow.Flow;
 
 import java.util.List;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutorService;
+import java.util.concurrent.*;
 
 public class ParallelNode implements ChainNode {
 
     private final List<Flow> subflows;
-    private final ExecutorService executor;
     private final ChainNode next;
 
-    public ParallelNode(List<Flow> subflows, ExecutorService executor,ChainNode next) {
+    public ParallelNode(List<Flow> subflows, ChainNode next) {
         this.subflows = List.copyOf(subflows);
-        this.executor = executor;
         this.next = next;
     }
 
     @Override
     public void execute() {
+        try(var scope = StructuredTaskScope.open()) {
+            subflows.forEach(subflow -> scope.fork(subflow::execute));
 
-        var callables = subflows.stream().map(flow -> (Callable<Void>) () -> {
-            flow.execute();
-            return null;
-        } ).toList();
+            scope.join();
 
-        try {
-            executor.invokeAll(callables);
-            if (next != null) {
-                next.execute();
-            }
         } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
             throw new RuntimeException(e);
+        } catch (StructuredTaskScope.FailedException e) {
+            handle(e);
         }
+
+        if (next != null) {
+            next.execute();
+        }
+    }
+
+    private void handle(StructuredTaskScope.FailedException ex){
+        if(ex.getCause() instanceof RuntimeException runtimeException) {
+            throw runtimeException;
+        }
+        throw new RuntimeException(ex);
     }
 }

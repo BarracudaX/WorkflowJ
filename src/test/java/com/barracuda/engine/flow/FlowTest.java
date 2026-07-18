@@ -13,6 +13,7 @@ import java.time.Duration;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.*;
 
@@ -71,8 +72,7 @@ public class FlowTest {
 
     @Test
     void runningFlowShouldHaveRunningState() {
-        var task = new FinishableTask();
-        var flow = rootFlowBuilder.ioTask(task).build();
+        var flow = rootFlowBuilder.ioTask(new BlockingTask()).build();
 
         ioTaskExecutor.submit(flow::execute);
 
@@ -81,7 +81,7 @@ public class FlowTest {
 
     @Test
     void shouldHaveCompletedStateOnceFinished() {
-        var task = new FinishableTask();
+        var task = new BlockingTask();
         var flow = rootFlowBuilder.ioTask(task).build();
 
         ioTaskExecutor.submit(flow::execute);
@@ -92,7 +92,7 @@ public class FlowTest {
 
     @Test
     void shouldThrowISEWhenTryingToExecuteAlreadyRunningFlow() {
-        var task = new FinishableTask();
+        var task = new BlockingTask();
         var flow = rootFlowBuilder.ioTask(task).build();
 
         ioTaskExecutor.submit(flow::execute);
@@ -133,6 +133,56 @@ public class FlowTest {
         Awaitility.await().atMost(Duration.ofSeconds(1)).untilAsserted(flow::state, state -> assertThat(state).isEqualTo(FlowState.COMPLETED));
     }
 
+    @Test
+    void shouldHavePausedStateWhenInterrupted() {
+        var flow = rootFlowBuilder
+                .ioTask(new BlockingTask())
+                .parallel(parallel -> parallel.subflow(subflow -> subflow.ioTask(new BlockingTask())))
+                .build();
+
+        var flowTask = ioTaskExecutor.submit(flow::execute);
+
+        Awaitility.await().atMost(Duration.ofSeconds(1)).untilAsserted(flow::state,state -> assertThat(state).isEqualTo(FlowState.RUNNING));
+
+        flowTask.cancel(true);
+
+        Awaitility.await().atMost(Duration.ofSeconds(1)).untilAsserted(flow::state,state -> assertThat(state).isEqualTo(FlowState.PAUSED));
+    }
+
+    @Test
+    void shouldCancelAllRunningTaskWhenPaused() {
+        var task = new BlockingTask();
+
+        var flow = rootFlowBuilder
+                .ioTask(task)
+                .build();
+
+        var flowTask = ioTaskExecutor.submit(flow::execute);
+
+        Awaitility.await().atMost(Duration.ofSeconds(1)).untilAsserted(flow::state,state -> assertThat(state).isEqualTo(FlowState.RUNNING));
+        Awaitility.await().atMost(Duration.ofSeconds(1)).untilAsserted(task::state,state -> assertThat(state).isEqualTo(BlockingTask.TaskState.WAITING));
+
+        flowTask.cancel(true);
+
+        Awaitility.await().atMost(Duration.ofSeconds(1)).untilAsserted(flow::state,state -> assertThat(state).isEqualTo(FlowState.PAUSED));
+
+        Awaitility.await().atMost(Duration.ofSeconds(1)).untilAsserted(task::state,state -> assertThat(state).isEqualTo(BlockingTask.TaskState.INTERRUPTED));
+    }
+
+    @Disabled("TODO. Remove TaskNode return statement inside catch of interrupted exception to cause a race condition that sometimes makes the next task execute when the current is interrupted. This is caused by the fact that inside ParallelTask task.get() can return without ever submitting the task.")
+    @Test
+    void shouldNotExecuteNextTaskWhenInterrupted() {
+
+    }
+
+    @Disabled("TODO")
+    @Test
+    void shouldHaveFailedStateIfParallelSubflowFailsWithException(){
+
+    }
+
+    //create wait methods to make test code more readable
+
     private record ParallelTask(CountDownLatch notifyReadyLatch, CountDownLatch barrierLatch) implements Task<Void, Void> {
 
         @Override
@@ -168,22 +218,33 @@ public class FlowTest {
 
     }
 
-    private static class FinishableTask implements Task<Void, Void> {
+    private static class BlockingTask implements Task<Void, Void> {
 
+        private enum TaskState {
+            CREATED,WAITING,COMPLETED,INTERRUPTED;
+        }
+        private final AtomicReference<TaskState> state = new AtomicReference<>(TaskState.CREATED);
         private final CountDownLatch latch = new CountDownLatch(1);
 
         @Override
         public Void execute(Void input) {
             try {
+                state.set(TaskState.WAITING);
                 latch.await();
             } catch (InterruptedException e) {
+                state.set(TaskState.INTERRUPTED);
                 throw new RuntimeException(e);
             }
+            state.set(TaskState.COMPLETED);
             return null;
         }
 
         public void finish(){
             latch.countDown();
+        }
+
+        public TaskState state(){
+            return state.get();
         }
     }
 
