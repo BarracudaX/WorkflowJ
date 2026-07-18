@@ -14,7 +14,7 @@ public class WorkflowTest {
 
     @Test
     void shouldBuildWorkflowWithSpecifiedName() {
-        Workflow workflow = workflow().name("TEST_NAME").build();
+        Workflow workflow = workflow().name("TEST_NAME").step(new FirstStep()).build();
 
         assertThat(workflow.name()).isEqualTo("TEST_NAME");
     }
@@ -51,6 +51,16 @@ public class WorkflowTest {
     @Test
     void shouldThrowIAEWhenProvidingBlankName() {
         assertThatThrownBy(() -> workflow().name(" ")).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void shouldThrowNullPointerExceptionWhenBuildingWorkflowWithoutAnyStep() {
+        assertThatThrownBy(() -> workflow().name("TEST").build()).isInstanceOf(NullPointerException.class);
+    }
+
+    @Test
+    void shouldThrowIAEWhenProvidingNullStep() {
+        assertThatThrownBy(() -> workflow().step(null)).isInstanceOf(IllegalArgumentException.class);
     }
 
     private static class FirstStep extends AbstractStep { }

@@ -24,6 +24,10 @@ public class WorkflowBuilder {
     }
 
     public WorkflowBuilder step(Step step) {
+        if(step == null) {
+            throw new IllegalArgumentException("step cannot be null");
+        }
+
         if(firstStep == null) {
             firstStep = step;
             currentStep = step;
@@ -34,7 +38,7 @@ public class WorkflowBuilder {
     }
 
     public Workflow build() {
-        return new Workflow(Objects.requireNonNull(name),new FlowImpl(firstStep));
+        return new Workflow(name,new FlowImpl(firstStep));
     }
 
 
