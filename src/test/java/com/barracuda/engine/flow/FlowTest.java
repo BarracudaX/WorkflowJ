@@ -11,6 +11,7 @@ import org.testcontainers.shaded.org.awaitility.Awaitility;
 
 import java.time.Duration;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicReference;
@@ -160,7 +161,7 @@ public class FlowTest {
         var flowTask = ioTaskExecutor.submit(flow::execute);
 
         waitUntilRunning(flow);
-        Awaitility.await().atMost(Duration.ofSeconds(1)).untilAsserted(task::state,state -> assertThat(state).isEqualTo(BlockingTask.TaskState.WAITING));
+        Awaitility.await().atMost(Duration.ofSeconds(1)).untilAsserted(task::state,state -> assertThat(state).isEqualTo(BlockingTask.TaskState.RUNNING));
 
         flowTask.cancel(true);
 
@@ -193,6 +194,34 @@ public class FlowTest {
     @Test
     void shouldHaveFailedStateIfParallelSubflowFailsWithException(){
 
+    }
+
+    @Test
+    void shouldCancelParallelSubflowsIfOneFails() throws ExecutionException, InterruptedException {
+        RuntimeException exception = new RuntimeException("I fail,lol");
+        var failTask = new FailOnCommandTask(exception);
+        var parallelTask2 = new BlockingTask();
+        var parallelTask3 = new BlockingTask();
+
+        var flow = rootFlowBuilder
+                .parallel(parallel ->
+                        parallel
+                                .subflow( subflow -> subflow.ioTask(failTask))
+                                .subflow( subflow -> subflow.ioTask(parallelTask2))
+                                .subflow( subflow -> subflow.ioTask(parallelTask3))
+                ).build();
+        var flowTask = ioTaskExecutor.submit(flow::execute);
+
+        waitUntilRunning(flow);
+        Awaitility.await().atMost(Duration.ofSeconds(1)).untilAsserted(parallelTask2::state,state ->  assertThat(state).isEqualTo(BlockingTask.TaskState.RUNNING));
+        Awaitility.await().atMost(Duration.ofSeconds(1)).untilAsserted(parallelTask3::state,state ->  assertThat(state).isEqualTo(BlockingTask.TaskState.RUNNING));
+
+        failTask.failNow();
+
+        Awaitility.await().atMost(Duration.ofSeconds(1)).untilAsserted(parallelTask2::state,state ->  assertThat(state).isEqualTo(BlockingTask.TaskState.INTERRUPTED));
+        Awaitility.await().atMost(Duration.ofSeconds(1)).untilAsserted(parallelTask3::state,state ->  assertThat(state).isEqualTo(BlockingTask.TaskState.INTERRUPTED));
+
+        assertThatCode(flowTask::get).hasCause(exception);
     }
 
     private void waitUntilRunning(Flow flow) {
@@ -247,14 +276,14 @@ public class FlowTest {
     private static class BlockingTask implements Task<Void, Void> {
 
         private enum TaskState {
-            CREATED,WAITING,COMPLETED,INTERRUPTED
+            CREATED, RUNNING,COMPLETED,INTERRUPTED
         }
         private final AtomicReference<TaskState> state = new AtomicReference<>(TaskState.CREATED);
         private final CountDownLatch latch = new CountDownLatch(1);
 
         @Override
         public Void execute(Void input) {
-            state.set(TaskState.WAITING);
+            state.set(TaskState.RUNNING);
             try {
                 latch.await();
             } catch (InterruptedException e) {
@@ -271,6 +300,33 @@ public class FlowTest {
 
         public TaskState state(){
             return state.get();
+        }
+
+    }
+
+    private static class FailOnCommandTask implements Task<Void,Void>{
+
+        private final AtomicReference<Boolean> shouldFail = new AtomicReference<>(false);
+        private final RuntimeException exception;
+
+        private FailOnCommandTask(RuntimeException exception) {
+            this.exception = exception;
+        }
+
+        @Override
+        public Void execute(Void input) {
+            while(!shouldFail.get()){
+                try {
+                    Thread.sleep(50);
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+            throw exception;
+        }
+
+        public void failNow(){
+            shouldFail.set(true);
         }
     }
 

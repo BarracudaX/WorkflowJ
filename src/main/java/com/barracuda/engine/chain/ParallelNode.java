@@ -17,11 +17,11 @@ public class ParallelNode implements ChainNode {
 
     @Override
     public void execute() {
+
         try(var scope = StructuredTaskScope.open()) {
             subflows.forEach(subflow -> scope.fork(subflow::execute));
 
             scope.join();
-
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new RuntimeException(e);
