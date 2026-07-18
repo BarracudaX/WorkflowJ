@@ -34,6 +34,9 @@ public class TaskNode<I,R> implements ChainNode{
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         } catch (ExecutionException e) {
+            if(e.getCause() instanceof RuntimeException runtimeException) {
+                throw runtimeException;
+            }
             throw new RuntimeException(e);
         }
 

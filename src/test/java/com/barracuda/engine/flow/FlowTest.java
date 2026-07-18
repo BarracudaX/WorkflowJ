@@ -10,6 +10,7 @@ import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.testcontainers.shaded.org.awaitility.Awaitility;
 
 import java.time.Duration;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -61,6 +62,54 @@ public class FlowTest {
         assertThat(cpuTask.taskThread).isEqualTo(TaskCapturingThread.TaskThread.PLATFORM);
     }
 
+    @Test
+    void newlyCreatedFlowShouldBeInCreatedState() {
+        Flow flow = rootFlowBuilder.build();
+
+        assertThat(flow.state()).isEqualTo(FlowState.CREATED);
+    }
+
+    @Test
+    void runningFlowShouldHaveRunningState() {
+        var task = new FinishableTask();
+        var flow = rootFlowBuilder.ioTask(task).build();
+
+        ioTaskExecutor.submit(flow::execute);
+
+        Awaitility.await().atMost(Duration.ofSeconds(1)).untilAsserted(flow::state, state -> assertThat(state).isEqualTo(FlowState.RUNNING));
+    }
+
+    @Test
+    void shouldHaveCompletedStateOnceFinished() {
+        var task = new FinishableTask();
+        var flow = rootFlowBuilder.ioTask(task).build();
+
+        ioTaskExecutor.submit(flow::execute);
+        task.finish();
+
+        Awaitility.await().atMost(Duration.ofSeconds(1)).untilAsserted(flow::state, state -> assertThat(state).isEqualTo(FlowState.COMPLETED));
+    }
+
+    @Test
+    void shouldThrowISEWhenTryingToExecuteAlreadyRunningFlow() {
+        var task = new FinishableTask();
+        var flow = rootFlowBuilder.ioTask(task).build();
+
+        ioTaskExecutor.submit(flow::execute);
+        Awaitility.await().atMost(Duration.ofSeconds(1)).untilAsserted(flow::state, state -> assertThat(state).isEqualTo(FlowState.RUNNING));
+
+        Awaitility.await().atMost(Duration.ofSeconds(1)).untilAsserted(() -> assertThatThrownBy(flow::execute).isInstanceOf(IllegalStateException.class));
+    }
+
+    @Test
+    void shouldHaveFailedStateIfTaskFailsWithException() {
+        RuntimeException exception = new RuntimeException("FAILED");
+
+        var flow = rootFlowBuilder.ioTask(Task.fromRunnable(() -> { throw exception; })).build();
+
+        assertThatThrownBy(flow::execute).isEqualTo(exception);
+        assertThat(flow.state()).isEqualTo(FlowState.FAILED);
+    }
 
     private static class TaskCapturingThread implements Task<Void,Void>{
 
@@ -81,6 +130,25 @@ public class FlowTest {
             return null;
         }
 
+    }
+
+    private static class FinishableTask implements Task<Void, Void> {
+
+        private final CountDownLatch latch = new CountDownLatch(1);
+
+        @Override
+        public Void execute(Void input) {
+            try {
+                latch.await();
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+            return null;
+        }
+
+        public void finish(){
+            latch.countDown();
+        }
     }
 
 }

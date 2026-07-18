@@ -4,4 +4,5 @@ public interface Flow {
 
     void execute();
 
+    FlowState state();
 }
