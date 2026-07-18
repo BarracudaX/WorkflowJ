@@ -1,16 +1,12 @@
 package com.barracuda.engine.flow;
 
 import com.barracuda.engine.chain.ChainNode;
-import com.barracuda.engine.chain.AbstractTaskNode;
-import com.barracuda.engine.chain.CpuTaskNode;
-import com.barracuda.engine.chain.IoTaskNode;
+import com.barracuda.engine.chain.TaskNode;
 import com.barracuda.engine.task.Task;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -27,12 +23,12 @@ public abstract class FlowBuilder<T extends FlowBuilder<T>> {
     }
 
     public <I, R> T ioTask(Task<I, R> task, Supplier<I> inputSupplier, Consumer<R> outputConsumer) {
-        chainNodes.add( (next) -> new IoTaskNode<>(next,task,inputSupplier,outputConsumer,virtualThreadExecutor));
+        chainNodes.add( (next) -> new TaskNode<>(next,task,inputSupplier,outputConsumer,virtualThreadExecutor));
         return self();
     }
 
     public <I, R> T cpuTask(Task<I, R> task, Supplier<I> inputSupplier, Consumer<R> outputConsumer) {
-        chainNodes.add( (next) -> new CpuTaskNode<>(next,task,inputSupplier,outputConsumer,cpuExecutor));
+        chainNodes.add( (next) -> new TaskNode<>(next,task,inputSupplier,outputConsumer,cpuExecutor));
         return self();
     }
 

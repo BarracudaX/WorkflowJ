@@ -4,11 +4,10 @@ import com.barracuda.engine.task.Task;
 
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
-public abstract class AbstractTaskNode<I,R> implements ChainNode{
+public class TaskNode<I,R> implements ChainNode{
 
     private final ChainNode next;
     private final Task<I,R> task;
@@ -16,7 +15,7 @@ public abstract class AbstractTaskNode<I,R> implements ChainNode{
     private final Consumer<R> taskOutputConsumer;
     private final ExecutorService executor;
 
-    public AbstractTaskNode(ChainNode next, Task<I, R> task, Supplier<I> taskInputSupplier, Consumer<R> taskOutputConsumer, ExecutorService executor) {
+    public TaskNode(ChainNode next, Task<I, R> task, Supplier<I> taskInputSupplier, Consumer<R> taskOutputConsumer, ExecutorService executor) {
         this.next = next;
         this.task = task;
         this.taskInputSupplier = taskInputSupplier;
