@@ -11,6 +11,7 @@ import java.util.Objects;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -193,12 +194,52 @@ public final class TestUtils {
     }
 
     public record RunningFlowWithOneTask(Flow flow, TestTask task, java.util.concurrent.Future<?> flowFuture) {
+
+        public RunningFlowWithOneTask cancel() {
+            flowFuture.cancel(true);
+            return this;
+        }
+
+        public RunningFlowWithOneTask failTask(RuntimeException e) {
+            task.failNow(e);
+            return this;
+        }
+
+        public RunningFlowWithOneTask finishTask(){
+            task.finish();
+            return this;
+        }
+
+        public RunningFlowWithOneTask waitUntilFlowPaused(){
+            waitUntilPaused(flow);
+            return this;
+        }
+
+        public RunningFlowWithOneTask waitUntilFlowFailed(){
+            TestUtils.waitUntilFailed(flow);
+            return this;
+        }
+
+        public RunningFlowWithOneTask waitUntilFlowCompleted() {
+            TestUtils.waitUntilCompleted(flow);
+            return this;
+        }
+
+        public RunningFlowWithOneTask verifyWithTaskID(Consumer<Long> verifier){
+            verifier.accept(task.id());
+            return this;
+        }
+
+        public RunningFlowWithOneTask verifyWithFlowID(Consumer<Long> verifier) {
+            verifier.accept(flow.id());
+            return this;
+        }
     }
 
     public static RunningFlowWithOneTask createRunningFlowWithOneTask(RootFlowBuilder rootFlowBuilder, ExecutorService executorService) {
 
-        TestTask task = new TestTask(1L);
-        var flow = rootFlowBuilder.ioTask(task).withID(1L).build();
+        TestTask task = new TestTask(5L);
+        var flow = rootFlowBuilder.ioTask(task).withID(10L).build();
         var flowFuture = executorService.submit(flow::execute);
         waitUntilRunning(flow);
         waitUntilRunning(task);
