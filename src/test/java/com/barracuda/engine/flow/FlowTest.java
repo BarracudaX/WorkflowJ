@@ -233,6 +233,7 @@ public class FlowTest {
                                 .subflow( subflow -> subflow.ioTask(parallelTask2))
                                 .subflow( subflow -> subflow.ioTask(parallelTask3))
                 ).build();
+
         ioTaskExecutor.submit(flow::execute);
 
         waitUntilRunning(flow);
@@ -290,4 +291,19 @@ public class FlowTest {
 
         nextTask.waitUntilRunning();
     }
+
+    @Test
+    void shouldPauseFlowIfTaskFailsWithFlowInterruptedException() {
+        var failTask = new TestTask();
+
+        var flow  = rootFlowBuilder.ioTask(failTask).build();
+
+        ioTaskExecutor.submit(flow::execute);
+        waitUntilRunning(flow);
+        failTask.waitUntilRunning();
+
+        failTask.failNow(new FlowInterruptedException("Simulating interruption"));
+        waitUntilPaused(flow);
+    }
+
 }
