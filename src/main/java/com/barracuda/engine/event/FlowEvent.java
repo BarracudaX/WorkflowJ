@@ -4,5 +4,7 @@ public sealed interface FlowEvent {
 
     record FlowStartedEvent(long flowID) implements FlowEvent{ }
 
-    record FlowTaskStartedEvent(long taskID) implements FlowEvent{ }
+    record TaskStartedEvent(long taskID) implements FlowEvent{ }
+
+    record TaskCompletedEvent(long taskID) implements FlowEvent{ }
 }

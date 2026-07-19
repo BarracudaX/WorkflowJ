@@ -3,7 +3,8 @@ package com.barracuda.engine.flow;
 import com.barracuda.engine.builder.RootFlowBuilder;
 import com.barracuda.engine.event.EvenPublisherImpl;
 import com.barracuda.engine.event.FlowEvent.FlowStartedEvent;
-import com.barracuda.engine.event.FlowEvent.FlowTaskStartedEvent;
+import com.barracuda.engine.event.FlowEvent.TaskCompletedEvent;
+import com.barracuda.engine.event.FlowEvent.TaskStartedEvent;
 import com.barracuda.engine.event.FlowEventPublisher;
 import com.barracuda.engine.event.InMemoryEventCapturer;
 import org.awaitility.Awaitility;
@@ -137,9 +138,9 @@ public class FlowTest {
         var flow = rootFlowBuilder
                 .parallel(parallel ->
                         parallel
-                                .subflow( subflow -> subflow.ioTask(new ParallelTestTask(readinessLatch,barrierLatch,1L)))
-                                .subflow( subflow -> subflow.ioTask(new ParallelTestTask(readinessLatch,barrierLatch,2L)))
-                                .subflow( subflow -> subflow.ioTask(new ParallelTestTask(readinessLatch,barrierLatch,3L)))
+                                .subflow( subflow -> subflow.ioTask(new ParallelTestTask(readinessLatch,barrierLatch,1L)).withID(1L))
+                                .subflow( subflow -> subflow.ioTask(new ParallelTestTask(readinessLatch,barrierLatch,2L)).withID(2L))
+                                .subflow( subflow -> subflow.ioTask(new ParallelTestTask(readinessLatch,barrierLatch,3L)).withID(3L))
                 ).build();
 
         ioTaskExecutor.submit(flow::execute);
@@ -218,9 +219,9 @@ public class FlowTest {
         var flow = rootFlowBuilder
                 .parallel(parallel ->
                         parallel
-                                .subflow( subflow -> subflow.ioTask(failTask))
-                                .subflow( subflow -> subflow.ioTask(parallelTask2))
-                                .subflow( subflow -> subflow.ioTask(parallelTask3))
+                                .subflow( subflow -> subflow.ioTask(failTask).withID(1L))
+                                .subflow( subflow -> subflow.ioTask(parallelTask2).withID(2L))
+                                .subflow( subflow -> subflow.ioTask(parallelTask3).withID(3L))
                 ).build();
         var flowTask = ioTaskExecutor.submit(flow::execute);
 
@@ -242,9 +243,9 @@ public class FlowTest {
         var flow = rootFlowBuilder
                 .parallel(parallel ->
                         parallel
-                                .subflow( subflow -> subflow.ioTask(failTask))
-                                .subflow( subflow -> subflow.ioTask(parallelTask2))
-                                .subflow( subflow -> subflow.ioTask(parallelTask3))
+                                .subflow( subflow -> subflow.ioTask(failTask).withID(1L))
+                                .subflow( subflow -> subflow.ioTask(parallelTask2).withID(2L))
+                                .subflow( subflow -> subflow.ioTask(parallelTask3).withID(3L))
                 ).build();
 
         ioTaskExecutor.submit(flow::execute);
@@ -269,8 +270,8 @@ public class FlowTest {
         var flow = rootFlowBuilder
                 .parallel(parallel ->
                         parallel
-                                .subflow( subflow -> subflow.ioTask(failTask))
-                                .subflow( subflow -> subflow.ioTask(parallelTask2))
+                                .subflow( subflow -> subflow.ioTask(failTask).withID(1L))
+                                .subflow( subflow -> subflow.ioTask(parallelTask2).withID(2L))
                 ).ioTask(nextTask)
                 .build();
 
@@ -291,8 +292,8 @@ public class FlowTest {
         var flow = rootFlowBuilder
                 .parallel(parallel ->
                         parallel
-                                .subflow( subflow -> subflow.ioTask(parallelTask1))
-                                .subflow( subflow -> subflow.ioTask(parallelTask2))
+                                .subflow( subflow -> subflow.ioTask(parallelTask1).withID(1L))
+                                .subflow( subflow -> subflow.ioTask(parallelTask2).withID(2L))
                 ).ioTask(nextTask)
                 .build();
         ioTaskExecutor.submit(flow::execute);
@@ -365,7 +366,22 @@ public class FlowTest {
         waitUntilRunning(flow);
         waitUntilRunning(task);
 
-        assertThat(eventCapturer.events()).contains(new FlowTaskStartedEvent(task.id()));
+        assertThat(eventCapturer.events()).contains(new TaskStartedEvent(task.id()));
+    }
+
+    @Test
+    void shouldPublishTaskCompletedEventWhenTaskFinishesNormally() {
+        var task = new TestTask(1L);
+        var flow = rootFlowBuilder.ioTask(task).build();
+
+        ioTaskExecutor.submit(flow::execute);
+        waitUntilRunning(flow);
+        waitUntilRunning(task);
+
+        task.finish();
+        waitUntilCompleted(flow);
+
+        assertThat(eventCapturer.events()).contains(new TaskCompletedEvent(task.id()));
     }
 
 }
