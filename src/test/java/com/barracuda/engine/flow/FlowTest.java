@@ -337,16 +337,14 @@ public class FlowTest {
 
     @Test
     void shouldPublishFlowStartedEventWhenStartingTheFlow() {
-        var singleTaskFlow = createRunningFlowWithOneTask(rootFlowBuilder, ioTaskExecutor);
-
-        assertThat(eventCapturer.events()).contains(new FlowStartedEvent(singleTaskFlow.flow().id()));
+        createRunningFlowWithOneTask(rootFlowBuilder, ioTaskExecutor)
+                .verifyWithFlowID(flowID -> assertThat(eventCapturer.events()).contains(new FlowStartedEvent(flowID)));
     }
 
     @Test
     void shouldPublishTaskStartedEventWhenExecutingTheTask() {
-        var singleTaskFlow = createRunningFlowWithOneTask(rootFlowBuilder, ioTaskExecutor);
-
-        assertThat(eventCapturer.events()).contains(new TaskStartedEvent(singleTaskFlow.task().id()));
+        createRunningFlowWithOneTask(rootFlowBuilder, ioTaskExecutor)
+                .verifyWithTaskID(taskID -> assertThat(eventCapturer.events()).contains(new TaskStartedEvent(taskID)));
     }
 
     @Test
