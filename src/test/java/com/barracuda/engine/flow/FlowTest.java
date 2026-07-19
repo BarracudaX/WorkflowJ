@@ -3,10 +3,7 @@ package com.barracuda.engine.flow;
 import com.barracuda.engine.builder.RootFlowBuilder;
 import com.barracuda.engine.event.EvenPublisherImpl;
 import com.barracuda.engine.event.FlowEvent;
-import com.barracuda.engine.event.FlowEvent.FlowStartedEvent;
-import com.barracuda.engine.event.FlowEvent.TaskCompletedEvent;
-import com.barracuda.engine.event.FlowEvent.TaskFailedEvent;
-import com.barracuda.engine.event.FlowEvent.TaskStartedEvent;
+import com.barracuda.engine.event.FlowEvent.*;
 import com.barracuda.engine.event.FlowEventPublisher;
 import com.barracuda.engine.event.InMemoryEventCapturer;
 import org.awaitility.Awaitility;
@@ -363,6 +360,15 @@ public class FlowTest {
     }
 
     @Test
+    void shouldPublishFlowCompletedEventWhenFlowFinishesNormally() {
+        var singleTaskFlow = createRunningFlowWithOneTask(rootFlowBuilder, ioTaskExecutor);
+        singleTaskFlow.task().finish();
+        waitUntilCompleted(singleTaskFlow.flow());
+
+        assertThat(eventCapturer.events()).contains(new FlowCompletedEvent(singleTaskFlow.flow().id()));
+    }
+
+    @Test
     void shouldPublishTaskFailedEventWhenTaskFinishesWithAnException() {
         var singleTaskFlow = createRunningFlowWithOneTask(rootFlowBuilder, ioTaskExecutor);
         var exception = new RuntimeException("FAILED");
@@ -374,5 +380,15 @@ public class FlowTest {
         assertThat(eventCapturer.events()).contains(new TaskFailedEvent(singleTaskFlow.task().id(), exception));
     }
 
+    @Test
+    void shouldPublishFlowFailedEventWhenATaskFailsWithAnException() {
+        var singleTaskFlow = createRunningFlowWithOneTask(rootFlowBuilder, ioTaskExecutor);
+        var exception = new RuntimeException("FAILED");
 
+        singleTaskFlow.task().failNow(exception);
+        waitUntilFailed(singleTaskFlow.task());
+        waitUntilFailed(singleTaskFlow.flow());
+
+        assertThat(eventCapturer.events()).contains(new FlowFailedEvent(singleTaskFlow.flow().id(), exception));
+    }
 }

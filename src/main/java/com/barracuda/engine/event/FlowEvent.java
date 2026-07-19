@@ -8,5 +8,9 @@ public sealed interface FlowEvent {
 
     record TaskCompletedEvent(long taskID) implements FlowEvent{ }
 
-    record TaskFailedEvent(long taskID,Exception exception) implements FlowEvent{ }
+    record TaskFailedEvent(long taskID, Exception exception) implements FlowEvent{ }
+
+    record FlowCompletedEvent(long flowID) implements FlowEvent{ }
+
+    record FlowFailedEvent(long flowID, Exception exception) implements FlowEvent{ }
 }

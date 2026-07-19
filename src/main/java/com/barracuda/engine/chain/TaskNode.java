@@ -68,9 +68,7 @@ public class TaskNode<I,R> implements ChainNode{
     private void handleInterrupted(Future<R> taskFuture, InterruptedException ex) {
         Thread.currentThread().interrupt();
         taskFuture.cancel(true);
-        FlowInterruptedException actualException = new FlowInterruptedException("Flow Interrupted", ex);
-
-        handleRuntimeException(actualException);
+        handle(new FlowInterruptedException("Flow Interrupted", ex), taskFuture);
     }
 
     private void handleRuntimeException(RuntimeException ex) {

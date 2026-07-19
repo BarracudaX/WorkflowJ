@@ -1,6 +1,9 @@
 package com.barracuda.engine.flow;
 
 import com.barracuda.engine.chain.ChainNode;
+import com.barracuda.engine.event.FlowEvent;
+import com.barracuda.engine.event.FlowEvent.FlowCompletedEvent;
+import com.barracuda.engine.event.FlowEvent.FlowFailedEvent;
 import com.barracuda.engine.event.FlowEvent.FlowStartedEvent;
 
 import java.util.Objects;
@@ -39,6 +42,7 @@ public class FlowImpl implements Flow {
             }
         });
 
+        context.getFlowEventPublisher().publish(new FlowCompletedEvent(id));
         state.set(FlowState.COMPLETED);
     }
 
@@ -62,6 +66,7 @@ public class FlowImpl implements Flow {
     private void failed(RuntimeException ex) {
         assert state.get() == FlowState.RUNNING;
         state.compareAndSet(FlowState.RUNNING, FlowState.FAILED);
+        context.getFlowEventPublisher().publish(new FlowFailedEvent(id,ex));
 
         throw ex;
     }
