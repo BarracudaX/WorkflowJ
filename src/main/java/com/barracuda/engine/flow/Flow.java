@@ -5,4 +5,6 @@ public interface Flow {
     void execute();
 
     FlowState state();
+
+    long id();
 }

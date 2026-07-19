@@ -11,3 +11,4 @@ A workflow engine for executing workflows defined using code.
 - Recovery with event-replaying.
 - Caching of task results and other optimization.
 - Encourage writing of business logic executed in workflow with pure functions.
+- Distributed workflow execution(future)

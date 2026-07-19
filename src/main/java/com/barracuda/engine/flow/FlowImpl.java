@@ -1,7 +1,10 @@
 package com.barracuda.engine.flow;
 
 import com.barracuda.engine.chain.ChainNode;
+import com.barracuda.engine.event.FlowEvent;
+import com.barracuda.engine.event.FlowEvent.FlowStartedEvent;
 
+import java.util.Objects;
 import java.util.concurrent.StructuredTaskScope;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -9,9 +12,13 @@ public class FlowImpl implements Flow {
 
     private final ChainNode chainNode;
     private final AtomicReference<FlowState> state = new AtomicReference<>(FlowState.CREATED);
+    private final long id;
+    private final FlowContext context;
 
-    public FlowImpl(ChainNode chainNode) {
+    public FlowImpl(ChainNode chainNode, long id, FlowContext context) {
+        this.context = Objects.requireNonNull(context);
         this.chainNode = chainNode;
+        this.id = id;
     }
 
     @Override
@@ -19,6 +26,8 @@ public class FlowImpl implements Flow {
         if (!state.compareAndSet(FlowState.CREATED, FlowState.RUNNING) && !state.compareAndSet(FlowState.PAUSED, FlowState.RUNNING)) {
             throw new IllegalStateException("Flow cannot be executed because it is in invalid state. Flow state: "+ state.get());
         }
+
+        context.getFlowEventPublisher().publish(new FlowStartedEvent(id));
 
         try (var scope = StructuredTaskScope.open()){
             scope.fork(chainNode::execute);
@@ -58,5 +67,10 @@ public class FlowImpl implements Flow {
     @Override
     public FlowState state() {
         return state.get();
+    }
+
+    @Override
+    public long id() {
+        return id;
     }
 }

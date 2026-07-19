@@ -1,7 +1,12 @@
 package com.barracuda.engine.flow;
 
 import com.barracuda.engine.builder.RootFlowBuilder;
+import com.barracuda.engine.event.EvenPublisherImpl;
+import com.barracuda.engine.event.FlowEvent.FlowStartedEvent;
+import com.barracuda.engine.event.FlowEventPublisher;
+import com.barracuda.engine.event.InMemoryEventCapturer;
 import org.awaitility.Awaitility;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -21,7 +26,14 @@ public class FlowTest {
 
     private final ExecutorService cpuTaskExecutor = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
     private final ExecutorService ioTaskExecutor = Executors.newVirtualThreadPerTaskExecutor();
-    private final RootFlowBuilder rootFlowBuilder = new RootFlowBuilder(cpuTaskExecutor, ioTaskExecutor);
+    private final InMemoryEventCapturer eventCapturer = new InMemoryEventCapturer();
+    private final FlowEventPublisher eventPublisher = new EvenPublisherImpl();
+    private final RootFlowBuilder rootFlowBuilder = new RootFlowBuilder(cpuTaskExecutor, ioTaskExecutor, eventPublisher).withID(1L);
+
+    @BeforeEach
+    void setUp() {
+        eventPublisher.subscribe(eventCapturer);
+    }
 
     @Test
     void shouldExecuteTasksInSpecifiedOrder(CapturedOutput output) {
@@ -327,4 +339,21 @@ public class FlowTest {
 
         waitUntilCompleted(flow);
     }
+
+    @Test
+    void shouldStoreFlowStartedEventWhenStartingTheFlow() {
+        var task = new TestTask();
+        var flow = rootFlowBuilder
+                .ioTask(task)
+                .build();
+
+        assertThat(eventCapturer.events()).isEmpty();
+
+        ioTaskExecutor.submit(flow::execute);
+        waitUntilRunning(flow);
+
+        assertThat(eventCapturer.events()).contains(new FlowStartedEvent(flow.id()));
+    }
+
+
 }

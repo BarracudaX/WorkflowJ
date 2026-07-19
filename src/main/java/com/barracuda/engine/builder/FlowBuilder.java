@@ -3,6 +3,7 @@ package com.barracuda.engine.builder;
 import com.barracuda.engine.chain.ChainNode;
 import com.barracuda.engine.chain.ParallelNode;
 import com.barracuda.engine.chain.TaskNode;
+import com.barracuda.engine.event.FlowEventPublisher;
 import com.barracuda.engine.flow.Flow;
 import com.barracuda.engine.task.Task;
 
@@ -18,14 +19,17 @@ public abstract class FlowBuilder<T extends FlowBuilder<T>> {
     private final ExecutorService cpuExecutor;
     private final ExecutorService ioExecutor;
     protected final List<Function<ChainNode,ChainNode>> chainNodes = new ArrayList<>();
+    protected final FlowEventPublisher flowEventPublisher;
+    protected Long id = null;
 
-    protected FlowBuilder(ExecutorService cpuExecutor,ExecutorService ioExecutor) {
+    protected FlowBuilder(ExecutorService cpuExecutor, ExecutorService ioExecutor, FlowEventPublisher flowEventPublisher) {
         this.cpuExecutor = cpuExecutor;
         this.ioExecutor = ioExecutor;
+        this.flowEventPublisher = flowEventPublisher;
     }
 
     public T parallel(Consumer<ParallelChainNodeBuilder> consumer) {
-        var builder = new ParallelChainNodeBuilder(cpuExecutor,ioExecutor);
+        var builder = new ParallelChainNodeBuilder(cpuExecutor,ioExecutor,flowEventPublisher);
 
         consumer.accept(builder);
 
@@ -52,6 +56,12 @@ public abstract class FlowBuilder<T extends FlowBuilder<T>> {
 
     public <I, R> T ioTask(Task<I, R> task) {
         return ioTask(task, nullSupplier(), noopConsumer());
+    }
+
+    public T withID(long id){
+        this.id = id;
+
+        return self();
     }
 
     /**
