@@ -33,7 +33,8 @@ public class FlowTest {
                 .runnableTask(() -> System.out.println("3"))
                 .build();
 
-        Awaitility.await().atMost(Duration.ofSeconds(1)).untilAsserted(flow::execute);
+        ioTaskExecutor.submit(flow::execute);
+        waitUntilCompleted(flow);
 
         assertThat(output.getAll().lines().toList()).containsExactly("1", "2", "3");
     }
