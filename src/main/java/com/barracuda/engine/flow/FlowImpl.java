@@ -24,31 +24,35 @@ public class FlowImpl implements Flow {
             scope.fork(chainNode::execute);
 
             scope.join();
-        }catch (InterruptedException ex){
-            Thread.currentThread().interrupt();
-            assert state.get() == FlowState.RUNNING;
-            state.compareAndSet(FlowState.RUNNING, FlowState.PAUSED);
-            return;
-        }catch (StructuredTaskScope.FailedException ex){
-            if(ex.getCause() instanceof RuntimeException runtimeException) {
-                failed(runtimeException);
-            }
-            throw ex;
         } catch (Exception e) {
-            failed(e);
-            throw e;
+            handle(e);
         }
 
         state.set(FlowState.COMPLETED);
     }
 
-    private void failed(Exception e) {
+    private void handle(Throwable exception){
+        switch (exception) {
+            case FlowInterruptedException ex -> interrupted(ex);
+            case InterruptedException ex -> interrupted(new FlowInterruptedException("Flow Interrupted",ex));
+            case StructuredTaskScope.FailedException ex -> handle(ex.getCause());
+            case RuntimeException ex -> failed(ex);
+            default -> failed(new RuntimeException(exception));
+        }
+    }
+
+    private void interrupted(FlowInterruptedException ex){
+        Thread.currentThread().interrupt();
+        assert state.get() == FlowState.RUNNING;
+        state.compareAndSet(FlowState.RUNNING, FlowState.PAUSED);
+        throw ex;
+    }
+
+    private void failed(RuntimeException ex) {
         assert state.get() == FlowState.RUNNING;
         state.compareAndSet(FlowState.RUNNING, FlowState.FAILED);
 
-        if(e instanceof RuntimeException runtimeException) {
-            throw runtimeException;
-        }
+        throw ex;
     }
 
     @Override

@@ -20,7 +20,7 @@ public final class TestUtils {
         try{
             Awaitility.await().atMost(Duration.ofSeconds(1)).untilAsserted(flow::state, state -> assertThat(state).isEqualTo(FlowState.FAILED));
         }catch (ConditionTimeoutException ex){
-            throw new AssertionError("Failed waiting for flow to fail.",ex);
+            throw new AssertionError("Failed waiting for flow to fail.Current state of the flow is "+flow.state(),ex);
         }
     }
 
@@ -28,7 +28,7 @@ public final class TestUtils {
         try{
             Awaitility.await().atMost(Duration.ofSeconds(1)).untilAsserted(flow::state,state -> assertThat(state).isEqualTo(FlowState.RUNNING));
         }catch (ConditionTimeoutException ex){
-            throw new AssertionError("Failed waiting for flow to start running.",ex);
+            throw new AssertionError("Failed waiting for flow to start running.Current state of the flow is "+flow.state(),ex);
         }
     }
 
@@ -36,7 +36,7 @@ public final class TestUtils {
         try {
             Awaitility.await().atMost(Duration.ofSeconds(1)).untilAsserted(flow::state,state -> assertThat(state).isEqualTo(FlowState.PAUSED));
         } catch (ConditionTimeoutException ex){
-            throw new AssertionError("Failed waiting for flow to pause.",ex);
+            throw new AssertionError("Failed waiting for flow to pause.Current state of the flow is "+flow.state(),ex);
         }
     }
 
@@ -44,7 +44,7 @@ public final class TestUtils {
         try {
             Awaitility.await().atMost(Duration.ofSeconds(1)).untilAsserted(flow::state, state -> assertThat(state).isEqualTo(FlowState.COMPLETED));
         } catch (ConditionTimeoutException ex){
-            throw new AssertionError("Failed waiting for flow to complete.",ex);
+            throw new AssertionError("Failed waiting for flow to complete.Current state of the flow is "+flow.state(),ex);
         }
     }
 
@@ -135,7 +135,7 @@ public final class TestUtils {
             try {
                 Awaitility.await().atMost(Duration.ofSeconds(1)).untilAsserted(this::state,state -> assertThat(state).isEqualTo(TestTaskState.RUNNING));
             } catch (ConditionTimeoutException ex) {
-                throw new AssertionError("Failed waiting for the blocking task to start running.",ex);
+                throw new AssertionError("Failed waiting for the blocking task to start running.Current task sate is "+state,ex);
             }
         }
 
@@ -143,7 +143,7 @@ public final class TestUtils {
             try {
                 Awaitility.await().atMost(Duration.ofSeconds(1)).untilAsserted(this::state,state -> assertThat(state).isEqualTo(TestTaskState.COMPLETED));
             } catch (ConditionTimeoutException ex) {
-                throw new AssertionError("Failed waiting for the blocking task to finish.",ex);
+                throw new AssertionError("Failed waiting for the blocking task to finish.Current task sate is "+state,ex);
             }
         }
 
@@ -151,7 +151,7 @@ public final class TestUtils {
             try {
                 Awaitility.await().atMost(Duration.ofSeconds(1)).untilAsserted(this::state,state -> assertThat(state).isEqualTo(TestTaskState.FAILED));
             } catch (ConditionTimeoutException ex) {
-                throw new AssertionError("Failed waiting for the blocking task to finish.",ex);
+                throw new AssertionError("Failed waiting for the blocking task to finish.Current task sate is "+state,ex);
             }
         }
 
@@ -159,7 +159,7 @@ public final class TestUtils {
             try {
                 Awaitility.await().atMost(Duration.ofSeconds(1)).untilAsserted(this::state,state -> assertThat(state).isEqualTo(TestTaskState.INTERRUPTED));
             } catch (ConditionTimeoutException ex) {
-                throw new AssertionError("Failed waiting for the blocking task to get interrupted.",ex);
+                throw new AssertionError("Failed waiting for the blocking task to get interrupted.Current task sate is "+state,ex);
             }
         }
 

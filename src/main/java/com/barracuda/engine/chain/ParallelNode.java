@@ -1,6 +1,7 @@
 package com.barracuda.engine.chain;
 
 import com.barracuda.engine.flow.Flow;
+import com.barracuda.engine.flow.FlowInterruptedException;
 
 import java.util.List;
 import java.util.concurrent.*;
@@ -18,15 +19,11 @@ public class ParallelNode implements ChainNode {
     @Override
     public void execute() {
 
-        try(var scope = StructuredTaskScope.open()) {
+        try (var scope = StructuredTaskScope.open()) {
             subflows.forEach(subflow -> scope.fork(subflow::execute));
-
             scope.join();
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new RuntimeException(e);
-        } catch (StructuredTaskScope.FailedException e) {
-            handle(e);
+        } catch (Exception exception) {
+            handle(exception);
         }
 
         if (next != null) {
@@ -34,10 +31,16 @@ public class ParallelNode implements ChainNode {
         }
     }
 
-    private void handle(StructuredTaskScope.FailedException ex){
-        if(ex.getCause() instanceof RuntimeException runtimeException) {
-            throw runtimeException;
+    private void handle(Throwable exception) {
+        switch (exception) {
+            case InterruptedException ex ->{
+                Thread.currentThread().interrupt();
+                throw new FlowInterruptedException("Flow interrupted",ex);
+            }
+            case StructuredTaskScope.FailedException ex -> handle(ex.getCause());
+            case RuntimeException ex -> throw ex;
+            default -> throw new RuntimeException(exception);
         }
-        throw new RuntimeException(ex);
     }
+
 }

@@ -1,5 +1,6 @@
 package com.barracuda.engine.chain;
 
+import com.barracuda.engine.flow.FlowInterruptedException;
 import com.barracuda.engine.task.Task;
 
 import java.util.concurrent.ExecutionException;
@@ -33,12 +34,8 @@ public class TaskNode<I,R> implements ChainNode{
         try {
              taskResult = executor.submit(() -> task.execute(input));
              result = taskResult.get();
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            taskResult.cancel(true);
-            return;
-        } catch (ExecutionException e) {
-            handleException(e);
+        } catch (Exception ex) {
+            handle(ex,taskResult);
         }
 
         taskOutputConsumer.accept(result);
@@ -49,11 +46,17 @@ public class TaskNode<I,R> implements ChainNode{
 
     }
 
-    private void handleException(ExecutionException e) {
-        if(e.getCause() instanceof RuntimeException runtimeException) {
-            throw runtimeException;
+    private void handle(Throwable cause, Future<R> task) {
+        switch (cause){
+            case ExecutionException ex -> handle(ex.getCause(),task);
+            case InterruptedException ex -> {
+                Thread.currentThread().interrupt();
+                task.cancel(true);
+                throw new FlowInterruptedException("Flow Interrupted", ex);
+            }
+            case RuntimeException ex -> throw ex;
+            default -> throw new RuntimeException(cause);
         }
-        throw new RuntimeException(e);
     }
 
 }
