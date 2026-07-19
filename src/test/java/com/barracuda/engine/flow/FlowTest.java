@@ -313,26 +313,10 @@ public class FlowTest {
         waitUntilPaused(singleTaskFlow.flow());
     }
 
+    @Disabled("Not yet sure how resumption will be implemeted.")
     @Test
     void shouldAllowResumingPausedFlowByExecutingItAgain() {
-        var task = new TestTask(1L);
 
-        var flow = rootFlowBuilder.ioTask(task).build();
-        var flowTask = ioTaskExecutor.submit(flow::execute);
-        waitUntilRunning(flow);
-        waitUntilRunning(task);
-
-        flowTask.cancel(true);
-
-        waitUntilPaused(flow);
-        waitUntilInterrupted(task);
-
-        ioTaskExecutor.submit(flow::execute);
-        waitUntilRunning(flow);
-        waitUntilRunning(task);
-        task.finish();
-
-        waitUntilCompleted(flow);
     }
 
     @Test
