@@ -4,6 +4,7 @@ import com.barracuda.engine.chain.ChainNode;
 import com.barracuda.engine.event.FlowEvent;
 import com.barracuda.engine.event.FlowEvent.FlowCompletedEvent;
 import com.barracuda.engine.event.FlowEvent.FlowFailedEvent;
+import com.barracuda.engine.event.FlowEvent.FlowPausedEvent;
 import com.barracuda.engine.event.FlowEvent.FlowStartedEvent;
 
 import java.util.Objects;
@@ -60,6 +61,7 @@ public class FlowImpl implements Flow {
         Thread.currentThread().interrupt();
         assert state.get() == FlowState.RUNNING;
         state.compareAndSet(FlowState.RUNNING, FlowState.PAUSED);
+        context.getFlowEventPublisher().publish(new FlowPausedEvent(id));
         throw ex;
     }
 

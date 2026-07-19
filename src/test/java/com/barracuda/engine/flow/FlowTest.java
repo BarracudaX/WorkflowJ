@@ -391,4 +391,25 @@ public class FlowTest {
 
         assertThat(eventCapturer.events()).contains(new FlowFailedEvent(singleTaskFlow.flow().id(), exception));
     }
+
+    @Test
+    void shouldPublishFlowPausedEventWhenInterrupted() {
+        var singleTaskFlow = createRunningFlowWithOneTask(rootFlowBuilder, ioTaskExecutor);
+
+        singleTaskFlow.flowFuture().cancel(true);
+        waitUntilPaused(singleTaskFlow.flow());
+
+        assertThat(eventCapturer.events()).contains(new FlowPausedEvent(singleTaskFlow.flow().id()));
+    }
+
+    @Test
+    void shouldPublishTaskPausedEvenWhenTaskInterrupted() {
+        var singleTaskFlow = createRunningFlowWithOneTask(rootFlowBuilder, ioTaskExecutor);
+
+        singleTaskFlow.flowFuture().cancel(true);
+        waitUntilPaused(singleTaskFlow.flow());
+        waitUntilInterrupted(singleTaskFlow.task());
+
+        assertThat(eventCapturer.events()).contains(new TaskPausedEvent(singleTaskFlow.task().id()));
+    }
 }

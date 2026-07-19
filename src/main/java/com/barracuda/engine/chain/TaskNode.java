@@ -3,6 +3,7 @@ package com.barracuda.engine.chain;
 import com.barracuda.engine.event.FlowEvent;
 import com.barracuda.engine.event.FlowEvent.TaskCompletedEvent;
 import com.barracuda.engine.event.FlowEvent.TaskFailedEvent;
+import com.barracuda.engine.event.FlowEvent.TaskPausedEvent;
 import com.barracuda.engine.event.FlowEvent.TaskStartedEvent;
 import com.barracuda.engine.flow.FlowInterruptedException;
 import com.barracuda.engine.task.Task;
@@ -68,7 +69,8 @@ public class TaskNode<I,R> implements ChainNode{
     private void handleInterrupted(Future<R> taskFuture, InterruptedException ex) {
         Thread.currentThread().interrupt();
         taskFuture.cancel(true);
-        handle(new FlowInterruptedException("Flow Interrupted", ex), taskFuture);
+        FLOW_CONTEXT.get().getFlowEventPublisher().publish(new TaskPausedEvent(task.id()));
+        throw new FlowInterruptedException("Flow Interrupted", ex);
     }
 
     private void handleRuntimeException(RuntimeException ex) {
