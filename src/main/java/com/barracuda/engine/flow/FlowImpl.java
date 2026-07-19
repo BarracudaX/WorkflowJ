@@ -1,7 +1,6 @@
 package com.barracuda.engine.flow;
 
 import com.barracuda.engine.chain.ChainNode;
-import com.barracuda.engine.event.FlowEvent;
 import com.barracuda.engine.event.FlowEvent.FlowStartedEvent;
 
 import java.util.Objects;
@@ -9,6 +8,7 @@ import java.util.concurrent.StructuredTaskScope;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class FlowImpl implements Flow {
+
 
     private final ChainNode chainNode;
     private final AtomicReference<FlowState> state = new AtomicReference<>(FlowState.CREATED);
@@ -29,13 +29,15 @@ public class FlowImpl implements Flow {
 
         context.getFlowEventPublisher().publish(new FlowStartedEvent(id));
 
-        try (var scope = StructuredTaskScope.open()){
-            scope.fork(chainNode::execute);
+        ScopedValue.where(FLOW_CONTEXT, context).run(() -> {
+            try (var scope = StructuredTaskScope.open()){
+                scope.fork(chainNode::execute);
 
-            scope.join();
-        } catch (Exception e) {
-            handle(e);
-        }
+                scope.join();
+            } catch (Exception e) {
+                handle(e);
+            }
+        });
 
         state.set(FlowState.COMPLETED);
     }

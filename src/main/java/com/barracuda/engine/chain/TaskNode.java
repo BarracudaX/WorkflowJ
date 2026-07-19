@@ -1,5 +1,6 @@
 package com.barracuda.engine.chain;
 
+import com.barracuda.engine.event.FlowEvent.FlowTaskStartedEvent;
 import com.barracuda.engine.flow.FlowInterruptedException;
 import com.barracuda.engine.task.Task;
 
@@ -8,6 +9,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
+
+import static com.barracuda.engine.flow.FlowImpl.FLOW_CONTEXT;
 
 public class TaskNode<I,R> implements ChainNode{
 
@@ -27,6 +30,8 @@ public class TaskNode<I,R> implements ChainNode{
 
     @Override
     public void execute() {
+        FLOW_CONTEXT.get().getFlowEventPublisher().publish(new FlowTaskStartedEvent(task.id()));
+
         I input = taskInputSupplier.get();
 
         Future<R> taskResult = null;

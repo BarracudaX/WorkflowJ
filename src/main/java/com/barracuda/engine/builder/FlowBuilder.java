@@ -71,8 +71,8 @@ public abstract class FlowBuilder<T extends FlowBuilder<T>> {
      * @param task the configured task
      * @return this builder
      */
-    public T runnableTask(Runnable task) {
-        return ioTask(Task.fromRunnable(task), nullSupplier(), noopConsumer());
+    public T runnableTask(Runnable task, long id) {
+        return ioTask(Task.fromRunnable(task,id), nullSupplier(), noopConsumer());
     }
 
     private static <T> Consumer<T> noopConsumer(){

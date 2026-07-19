@@ -3,6 +3,7 @@ package com.barracuda.engine.flow;
 import com.barracuda.engine.builder.RootFlowBuilder;
 import com.barracuda.engine.event.EvenPublisherImpl;
 import com.barracuda.engine.event.FlowEvent.FlowStartedEvent;
+import com.barracuda.engine.event.FlowEvent.FlowTaskStartedEvent;
 import com.barracuda.engine.event.FlowEventPublisher;
 import com.barracuda.engine.event.InMemoryEventCapturer;
 import org.awaitility.Awaitility;
@@ -38,9 +39,9 @@ public class FlowTest {
     @Test
     void shouldExecuteTasksInSpecifiedOrder(CapturedOutput output) {
         Flow flow = rootFlowBuilder
-                .runnableTask(() -> System.out.println("1"))
-                .runnableTask(() -> System.out.println("2"))
-                .runnableTask(() -> System.out.println("3"))
+                .runnableTask(() -> System.out.println("1"),1L)
+                .runnableTask(() -> System.out.println("2"),2L)
+                .runnableTask(() -> System.out.println("3"),3L)
                 .build();
 
         ioTaskExecutor.submit(flow::execute);
@@ -60,8 +61,8 @@ public class FlowTest {
 
     @Test
     void shouldExecuteIoAndCpuTasksOnDifferentExecutors() {
-        TaskCapturingThread ioTask = new TaskCapturingThread();
-        TaskCapturingThread cpuTask = new TaskCapturingThread();
+        TaskCapturingThread ioTask = new TaskCapturingThread(1L);
+        TaskCapturingThread cpuTask = new TaskCapturingThread(2L);
 
         //root flow builder is configured with virtual executor for io tasks and fixed executor for cpu tasks.
         Flow flow = rootFlowBuilder
@@ -84,7 +85,7 @@ public class FlowTest {
 
     @Test
     void runningFlowShouldHaveRunningState() {
-        var flow = rootFlowBuilder.ioTask(new TestTask()).build();
+        var flow = rootFlowBuilder.ioTask(new TestTask(1L)).build();
 
         ioTaskExecutor.submit(flow::execute);
 
@@ -93,7 +94,7 @@ public class FlowTest {
 
     @Test
     void shouldHaveCompletedStateOnceFinished() {
-        var task = new TestTask();
+        var task = new TestTask(1L);
         var flow = rootFlowBuilder.ioTask(task).build();
 
         ioTaskExecutor.submit(flow::execute);
@@ -105,7 +106,7 @@ public class FlowTest {
 
     @Test
     void shouldThrowISEWhenTryingToExecuteAlreadyRunningFlow() {
-        var task = new TestTask();
+        var task = new TestTask(1L);
         var flow = rootFlowBuilder.ioTask(task).build();
 
         ioTaskExecutor.submit(flow::execute);
@@ -117,7 +118,7 @@ public class FlowTest {
     @Test
     void shouldHaveFailedStateIfTaskFailsWithException() {
         var exception = new RuntimeException("FAILED");
-        var failTask = new TestTask();
+        var failTask = new TestTask(1L);
         var flow = rootFlowBuilder.ioTask(failTask).build();
 
         var flowResult = ioTaskExecutor.submit(flow::execute);
@@ -136,9 +137,9 @@ public class FlowTest {
         var flow = rootFlowBuilder
                 .parallel(parallel ->
                         parallel
-                                .subflow( subflow -> subflow.ioTask(new ParallelTestTask(readinessLatch,barrierLatch)))
-                                .subflow( subflow -> subflow.ioTask(new ParallelTestTask(readinessLatch,barrierLatch)))
-                                .subflow( subflow -> subflow.ioTask(new ParallelTestTask(readinessLatch,barrierLatch)))
+                                .subflow( subflow -> subflow.ioTask(new ParallelTestTask(readinessLatch,barrierLatch,1L)))
+                                .subflow( subflow -> subflow.ioTask(new ParallelTestTask(readinessLatch,barrierLatch,2L)))
+                                .subflow( subflow -> subflow.ioTask(new ParallelTestTask(readinessLatch,barrierLatch,3L)))
                 ).build();
 
         ioTaskExecutor.submit(flow::execute);
@@ -152,7 +153,7 @@ public class FlowTest {
 
     @Test
     void shouldHavePausedStateWhenInterrupted() {
-        TestTask task = new TestTask();
+        TestTask task = new TestTask(1L);
         var flow = rootFlowBuilder
                 .ioTask(task)
                 .build();
@@ -168,7 +169,7 @@ public class FlowTest {
 
     @Test
     void shouldCancelAllRunningTaskWhenPaused() {
-        var task = new TestTask();
+        var task = new TestTask(1L);
 
         var flow = rootFlowBuilder
                 .ioTask(task)
@@ -188,8 +189,8 @@ public class FlowTest {
 
     @Test
     void shouldNotExecuteNextTaskWhenInterrupted() {
-        var firstTask = new TestTask();
-        var secondTask = new TestTask();
+        var firstTask = new TestTask(1L);
+        var secondTask = new TestTask(2L);
 
         var flow = rootFlowBuilder
                 .ioTask(firstTask)
@@ -210,9 +211,9 @@ public class FlowTest {
     @Test
     void shouldHaveFailedStateIfParallelSubflowFailsWithException(){
         RuntimeException exception = new RuntimeException("I fail,lol");
-        var failTask = new TestTask();
-        var parallelTask2 = new TestTask();
-        var parallelTask3 = new TestTask();
+        var failTask = new TestTask(1L);
+        var parallelTask2 = new TestTask(2L);
+        var parallelTask3 = new TestTask(3L);
 
         var flow = rootFlowBuilder
                 .parallel(parallel ->
@@ -234,9 +235,9 @@ public class FlowTest {
 
     @Test
     void shouldCancelParallelSubflowsIfOneOfThemFails() {
-        var failTask = new TestTask();
-        var parallelTask2 = new TestTask();
-        var parallelTask3 = new TestTask();
+        var failTask = new TestTask(1L);
+        var parallelTask2 = new TestTask(2L);
+        var parallelTask3 = new TestTask(3L);
 
         var flow = rootFlowBuilder
                 .parallel(parallel ->
@@ -261,9 +262,9 @@ public class FlowTest {
 
     @Test
     void shouldNotRunNextTaskWhenParallelSubflowFails() {
-        var failTask = new TestTask();
-        var parallelTask2 = new TestTask();
-        var nextTask = new TestTask();
+        var failTask = new TestTask(1L);
+        var parallelTask2 = new TestTask(2L);
+        var nextTask = new TestTask(3L);
 
         var flow = rootFlowBuilder
                 .parallel(parallel ->
@@ -283,9 +284,9 @@ public class FlowTest {
 
     @Test
     void shouldExecuteTheNextTaskWhenParallelSubflowsComplete() {
-        var parallelTask1 = new TestTask();
-        var parallelTask2 = new TestTask();
-        var nextTask = new TestTask();
+        var parallelTask1 = new TestTask(1L);
+        var parallelTask2 = new TestTask(2L);
+        var nextTask = new TestTask(3L);
 
         var flow = rootFlowBuilder
                 .parallel(parallel ->
@@ -306,7 +307,7 @@ public class FlowTest {
 
     @Test
     void shouldPauseFlowIfTaskFailsWithFlowInterruptedException() {
-        var task = new TestTask();
+        var task = new TestTask(1L);
 
         var flow  = rootFlowBuilder.ioTask(task).build();
 
@@ -320,7 +321,7 @@ public class FlowTest {
 
     @Test
     void shouldAllowResumingPausedFlowByExecutingItAgain() {
-        var task = new TestTask();
+        var task = new TestTask(1L);
 
         var flow  = rootFlowBuilder.ioTask(task).build();
         var flowTask = ioTaskExecutor.submit(flow::execute);
@@ -341,8 +342,8 @@ public class FlowTest {
     }
 
     @Test
-    void shouldStoreFlowStartedEventWhenStartingTheFlow() {
-        var task = new TestTask();
+    void shouldPublishFlowStartedEventWhenStartingTheFlow() {
+        var task = new TestTask(1L);
         var flow = rootFlowBuilder
                 .ioTask(task)
                 .build();
@@ -355,5 +356,16 @@ public class FlowTest {
         assertThat(eventCapturer.events()).contains(new FlowStartedEvent(flow.id()));
     }
 
+    @Test
+    void shouldPublishTaskStartedEventWhenExecutingTheTask() {
+        var task = new TestTask(1L);
+        var flow = rootFlowBuilder.ioTask(task).build();
+
+        ioTaskExecutor.submit(flow::execute);
+        waitUntilRunning(flow);
+        waitUntilRunning(task);
+
+        assertThat(eventCapturer.events()).contains(new FlowTaskStartedEvent(task.id()));
+    }
 
 }

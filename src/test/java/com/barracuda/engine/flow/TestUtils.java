@@ -80,7 +80,7 @@ public final class TestUtils {
         }
     }
 
-    public record ParallelTestTask(CountDownLatch notifyReadyLatch, CountDownLatch barrierLatch) implements Task<Void, Void> {
+    public record ParallelTestTask(CountDownLatch notifyReadyLatch, CountDownLatch barrierLatch,long id) implements Task<Void, Void> {
 
         @Override
         public Void execute(Void input) {
@@ -99,6 +99,12 @@ public final class TestUtils {
      */
     public static class TaskCapturingThread implements Task<Void,Void>{
 
+        private final long id;
+
+        public TaskCapturingThread(long id) {
+            this.id = id;
+        }
+
         public enum TaskThread{
             VIRTUAL,PLATFORM,NONE
         }
@@ -116,6 +122,11 @@ public final class TestUtils {
             return null;
         }
 
+        @Override
+        public long id() {
+            return id;
+        }
+
     }
     public enum TestTaskState {
         CREATED, RUNNING,COMPLETED,INTERRUPTED,FAILED
@@ -130,6 +141,11 @@ public final class TestUtils {
         private final AtomicReference<TestTaskState> state = new AtomicReference<>(TestTaskState.CREATED);
         private final CountDownLatch latch = new CountDownLatch(1);
         private volatile RuntimeException failException;
+        private final long id;
+
+        public TestTask(long id) {
+            this.id = id;
+        }
 
         @Override
         public Void execute(Void input) {
@@ -146,6 +162,11 @@ public final class TestUtils {
             }
 
             return null;
+        }
+
+        @Override
+        public long id() {
+            return id;
         }
 
         public void failNow(RuntimeException failException){
