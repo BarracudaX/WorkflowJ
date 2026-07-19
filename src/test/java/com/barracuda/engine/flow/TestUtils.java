@@ -48,6 +48,38 @@ public final class TestUtils {
         }
     }
 
+    public static void waitUntilRunning(TestTask task) {
+        try {
+            Awaitility.await().atMost(Duration.ofSeconds(1)).untilAsserted(task::state,state -> assertThat(state).isEqualTo(TestTaskState.RUNNING));
+        } catch (ConditionTimeoutException ex) {
+            throw new AssertionError("Failed waiting for the blocking task to start running.Current task sate is "+task.state(),ex);
+        }
+    }
+
+    public static void waitUntilFinished(TestTask task){
+        try {
+            Awaitility.await().atMost(Duration.ofSeconds(1)).untilAsserted(task::state,state -> assertThat(state).isEqualTo(TestTaskState.COMPLETED));
+        } catch (ConditionTimeoutException ex) {
+            throw new AssertionError("Failed waiting for the blocking task to finish.Current task sate is "+task.state(),ex);
+        }
+    }
+
+    public static void waitUntilFailed(TestTask task){
+        try {
+            Awaitility.await().atMost(Duration.ofSeconds(1)).untilAsserted(task::state,state -> assertThat(state).isEqualTo(TestTaskState.FAILED));
+        } catch (ConditionTimeoutException ex) {
+            throw new AssertionError("Failed waiting for the blocking task to finish.Current task sate is "+task.state(),ex);
+        }
+    }
+
+    public static void waitUntilInterrupted(TestTask task) {
+        try {
+            Awaitility.await().atMost(Duration.ofSeconds(1)).untilAsserted(task::state,state -> assertThat(state).isEqualTo(TestTaskState.INTERRUPTED));
+        } catch (ConditionTimeoutException ex) {
+            throw new AssertionError("Failed waiting for the blocking task to get interrupted.Current task sate is "+task.state(),ex);
+        }
+    }
+
     public record ParallelTestTask(CountDownLatch notifyReadyLatch, CountDownLatch barrierLatch) implements Task<Void, Void> {
 
         @Override
@@ -129,38 +161,6 @@ public final class TestUtils {
                 throw new IllegalStateException("Cannot finish this task because its state is not RUNNING, but "+state.get());
             }
             latch.countDown();
-        }
-
-        public void waitUntilRunning(){
-            try {
-                Awaitility.await().atMost(Duration.ofSeconds(1)).untilAsserted(this::state,state -> assertThat(state).isEqualTo(TestTaskState.RUNNING));
-            } catch (ConditionTimeoutException ex) {
-                throw new AssertionError("Failed waiting for the blocking task to start running.Current task sate is "+state,ex);
-            }
-        }
-
-        public void waitUntilFinished(){
-            try {
-                Awaitility.await().atMost(Duration.ofSeconds(1)).untilAsserted(this::state,state -> assertThat(state).isEqualTo(TestTaskState.COMPLETED));
-            } catch (ConditionTimeoutException ex) {
-                throw new AssertionError("Failed waiting for the blocking task to finish.Current task sate is "+state,ex);
-            }
-        }
-
-        public void waitUntilFailed(){
-            try {
-                Awaitility.await().atMost(Duration.ofSeconds(1)).untilAsserted(this::state,state -> assertThat(state).isEqualTo(TestTaskState.FAILED));
-            } catch (ConditionTimeoutException ex) {
-                throw new AssertionError("Failed waiting for the blocking task to finish.Current task sate is "+state,ex);
-            }
-        }
-
-        public void waitUntilInterrupted() {
-            try {
-                Awaitility.await().atMost(Duration.ofSeconds(1)).untilAsserted(this::state,state -> assertThat(state).isEqualTo(TestTaskState.INTERRUPTED));
-            } catch (ConditionTimeoutException ex) {
-                throw new AssertionError("Failed waiting for the blocking task to get interrupted.Current task sate is "+state,ex);
-            }
         }
 
         public TestTaskState state(){

@@ -16,7 +16,7 @@ public class FlowImpl implements Flow {
 
     @Override
     public void execute() {
-        if (!state.compareAndSet(FlowState.CREATED, FlowState.RUNNING)) {
+        if (!state.compareAndSet(FlowState.CREATED, FlowState.RUNNING) && !state.compareAndSet(FlowState.PAUSED, FlowState.RUNNING)) {
             throw new IllegalStateException("Flow cannot be executed because it is in invalid state. Flow state: "+ state.get());
         }
 

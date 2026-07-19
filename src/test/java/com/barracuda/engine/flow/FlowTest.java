@@ -85,7 +85,7 @@ public class FlowTest {
         var flow = rootFlowBuilder.ioTask(task).build();
 
         ioTaskExecutor.submit(flow::execute);
-        task.waitUntilRunning();
+        waitUntilRunning(task);
         task.finish();
 
         waitUntilCompleted(flow);
@@ -109,7 +109,7 @@ public class FlowTest {
         var flow = rootFlowBuilder.ioTask(failTask).build();
 
         var flowResult = ioTaskExecutor.submit(flow::execute);
-        failTask.waitUntilRunning();
+        waitUntilRunning(failTask);
         failTask.failNow(exception);
 
         waitUntilFailed(flow);
@@ -165,13 +165,13 @@ public class FlowTest {
         var flowTask = ioTaskExecutor.submit(flow::execute);
 
         waitUntilRunning(flow);
-        task.waitUntilRunning();
+        waitUntilRunning(task);
 
         flowTask.cancel(true);
 
         waitUntilPaused(flow);
 
-        task.waitUntilInterrupted();
+        waitUntilInterrupted(task);
     }
 
     @Test
@@ -187,7 +187,7 @@ public class FlowTest {
         var flowTask = ioTaskExecutor.submit(flow::execute);
 
         waitUntilRunning(flow);
-        firstTask.waitUntilRunning();
+        waitUntilRunning(firstTask);
 
         flowTask.cancel(true);
         waitUntilPaused(flow);
@@ -212,8 +212,8 @@ public class FlowTest {
         var flowTask = ioTaskExecutor.submit(flow::execute);
 
         waitUntilRunning(flow);
-        parallelTask2.waitUntilRunning();
-        parallelTask3.waitUntilRunning();
+        waitUntilRunning(parallelTask2);
+        waitUntilRunning(parallelTask3);
         failTask.failNow(exception);
 
         waitUntilFailed(flow);
@@ -237,14 +237,14 @@ public class FlowTest {
         ioTaskExecutor.submit(flow::execute);
 
         waitUntilRunning(flow);
-        failTask.waitUntilRunning();
-        parallelTask2.waitUntilRunning();
-        parallelTask3.waitUntilRunning();
+        waitUntilRunning(failTask);
+        waitUntilRunning(parallelTask2);
+        waitUntilRunning(parallelTask3);
 
         failTask.failNow(new RuntimeException("FAIL"));
 
-        parallelTask2.waitUntilInterrupted();
-        parallelTask3.waitUntilInterrupted();
+        waitUntilInterrupted(parallelTask2);
+        waitUntilInterrupted(parallelTask3);
     }
 
     @Test
@@ -289,21 +289,42 @@ public class FlowTest {
         assertThat(nextTask.state()).isEqualTo(TestTaskState.CREATED);
         parallelTask2.finish();
 
-        nextTask.waitUntilRunning();
+        waitUntilRunning(nextTask);
     }
 
     @Test
     void shouldPauseFlowIfTaskFailsWithFlowInterruptedException() {
-        var failTask = new TestTask();
+        var task = new TestTask();
 
-        var flow  = rootFlowBuilder.ioTask(failTask).build();
+        var flow  = rootFlowBuilder.ioTask(task).build();
 
         ioTaskExecutor.submit(flow::execute);
         waitUntilRunning(flow);
-        failTask.waitUntilRunning();
+        waitUntilRunning(task);
 
-        failTask.failNow(new FlowInterruptedException("Simulating interruption"));
+        task.failNow(new FlowInterruptedException("Simulating interruption"));
         waitUntilPaused(flow);
     }
 
+    @Test
+    void shouldAllowResumingPausedFlowByExecutingItAgain() {
+        var task = new TestTask();
+
+        var flow  = rootFlowBuilder.ioTask(task).build();
+        var flowTask = ioTaskExecutor.submit(flow::execute);
+        waitUntilRunning(flow);
+        waitUntilRunning(task);
+
+        flowTask.cancel(true);
+
+        waitUntilPaused(flow);
+        waitUntilInterrupted(task);
+
+        ioTaskExecutor.submit(flow::execute);
+        waitUntilRunning(flow);
+        waitUntilRunning(task);
+        task.finish();
+
+        waitUntilCompleted(flow);
+    }
 }
