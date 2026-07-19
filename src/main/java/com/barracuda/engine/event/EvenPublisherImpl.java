@@ -13,7 +13,7 @@ public final class EvenPublisherImpl implements FlowEventPublisher {
     }
 
     @Override
-    public void publish(FlowEvent event) {
+    public void publish(ExecutionEvent event) {
         listeners.forEach(listener -> listener.onEvent(event));
     }
 }

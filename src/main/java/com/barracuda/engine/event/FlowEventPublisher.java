@@ -2,7 +2,7 @@ package com.barracuda.engine.event;
 
 public interface FlowEventPublisher {
 
-    void publish(FlowEvent event);
+    void publish(ExecutionEvent event);
 
     void subscribe(FlowEventListener eventListener);
 }

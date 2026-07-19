@@ -1,10 +1,9 @@
 package com.barracuda.engine.chain;
 
-import com.barracuda.engine.event.FlowEvent;
-import com.barracuda.engine.event.FlowEvent.TaskCompletedEvent;
-import com.barracuda.engine.event.FlowEvent.TaskFailedEvent;
-import com.barracuda.engine.event.FlowEvent.TaskPausedEvent;
-import com.barracuda.engine.event.FlowEvent.TaskStartedEvent;
+import com.barracuda.engine.event.ExecutionEvent;
+import com.barracuda.engine.event.ExecutionEvent.TaskEvent.TaskFailedEvent;
+import com.barracuda.engine.event.ExecutionEvent.TaskEvent.TaskPausedEvent;
+import com.barracuda.engine.event.ExecutionEvent.TaskEvent.TaskStartedEvent;
 import com.barracuda.engine.flow.FlowInterruptedException;
 import com.barracuda.engine.task.Task;
 
@@ -47,7 +46,7 @@ public class TaskNode<I,R> implements ChainNode{
             handle(ex,taskResult);
         }
 
-        FLOW_CONTEXT.get().getFlowEventPublisher().publish(new TaskCompletedEvent(task.id()));
+        FLOW_CONTEXT.get().getFlowEventPublisher().publish(new ExecutionEvent.TaskEvent.TaskCompletedEvent(task.id()));
 
         taskOutputConsumer.accept(result);
 

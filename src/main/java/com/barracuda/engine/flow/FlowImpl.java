@@ -1,11 +1,10 @@
 package com.barracuda.engine.flow;
 
 import com.barracuda.engine.chain.ChainNode;
-import com.barracuda.engine.event.FlowEvent;
-import com.barracuda.engine.event.FlowEvent.FlowCompletedEvent;
-import com.barracuda.engine.event.FlowEvent.FlowFailedEvent;
-import com.barracuda.engine.event.FlowEvent.FlowPausedEvent;
-import com.barracuda.engine.event.FlowEvent.FlowStartedEvent;
+import com.barracuda.engine.event.ExecutionEvent;
+import com.barracuda.engine.event.ExecutionEvent.FlowEvent.FlowCompletedEvent;
+import com.barracuda.engine.event.ExecutionEvent.FlowEvent.FlowFailedEvent;
+import com.barracuda.engine.event.ExecutionEvent.FlowEvent.FlowStartedEvent;
 
 import java.util.Objects;
 import java.util.concurrent.StructuredTaskScope;
@@ -61,7 +60,7 @@ public class FlowImpl implements Flow {
         Thread.currentThread().interrupt();
         assert state.get() == FlowState.RUNNING;
         state.compareAndSet(FlowState.RUNNING, FlowState.PAUSED);
-        context.getFlowEventPublisher().publish(new FlowPausedEvent(id));
+        context.getFlowEventPublisher().publish(new ExecutionEvent.FlowEvent.FlowPausedEvent(id));
         throw ex;
     }
 

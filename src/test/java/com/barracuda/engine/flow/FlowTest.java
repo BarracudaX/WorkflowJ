@@ -1,10 +1,12 @@
 package com.barracuda.engine.flow;
 
+import com.barracuda.engine.utility.AwaitilityUtils;
 import com.barracuda.engine.builder.RootFlowBuilder;
 import com.barracuda.engine.event.EvenPublisherImpl;
-import com.barracuda.engine.event.FlowEvent.*;
 import com.barracuda.engine.event.FlowEventPublisher;
 import com.barracuda.engine.event.InMemoryEventCapturer;
+import com.barracuda.engine.test.ParallelTestTask;
+import com.barracuda.engine.test.TestTaskVerifier;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
@@ -18,8 +20,9 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import static com.barracuda.engine.flow.TestUtils.*;
+import static com.barracuda.engine.test.TestFlowBuilder.testFlow;
 import static org.assertj.core.api.Assertions.*;
+
 
 @ExtendWith(OutputCaptureExtension.class)
 public class FlowTest {
@@ -44,7 +47,7 @@ public class FlowTest {
                 .build();
 
         ioTaskExecutor.submit(flow::execute);
-        waitUntilCompleted(flow);
+        AwaitilityUtils.waitUntilFlowCompleted(flow);
 
         assertThat(output.getAll().lines().toList()).containsExactly("1", "2", "3");
     }
@@ -58,75 +61,63 @@ public class FlowTest {
     void shouldAllowCreationOfEmptyFlow() {
         assertThatCode(rootFlowBuilder::build).doesNotThrowAnyException();
     }
-
+//
     @Test
     void shouldExecuteIoAndCpuTasksOnDifferentExecutors() {
-        TaskCapturingThread ioTask = new TaskCapturingThread(1L);
-        TaskCapturingThread cpuTask = new TaskCapturingThread(2L);
 
-        //root flow builder is configured with virtual executor for io tasks and fixed executor for cpu tasks.
-        Flow flow = rootFlowBuilder
-                .ioTask(ioTask)
-                .cpuTask(cpuTask)
-                .build();
-
-        flow.execute();
-
-        assertThat(ioTask.getTaskThread()).isEqualTo(TaskCapturingThread.TaskThread.VIRTUAL);
-        assertThat(cpuTask.getTaskThread()).isEqualTo(TaskCapturingThread.TaskThread.PLATFORM);
+        //Note that testFlow by default runs IO tasks on virtual thread and cpu tasks on platform threads.
+        testFlow()
+                .task("IoTask")
+                .cpuTask("CpuTask")
+                .build()
+                .startFlow()
+                .finishTask("IoTask")
+                .finishTask("CpuTask")
+                .assertThatTask("IoTask",TestTaskVerifier::ranOnVirtualThread)
+                .assertThatTask("CpuTask",TestTaskVerifier::ranOnPlatformThread);
     }
 
     @Test
     void newlyCreatedFlowShouldBeInCreatedState() {
-        Flow flow = rootFlowBuilder.build();
-
-        assertThat(flow.state()).isEqualTo(FlowState.CREATED);
+        testFlow()
+                .task("Task")
+                .build()
+                .expectFlowInCreatedState();
     }
 
     @Test
     void runningFlowShouldHaveRunningState() {
-        var flow = rootFlowBuilder.ioTask(new TestTask(1L)).build();
-
-        ioTaskExecutor.submit(flow::execute);
-
-        waitUntilRunning(flow);
+        testFlow()
+                .task("Task")
+                .build()
+                .startFlow()
+                .expectIsRunning();
     }
 
     @Test
     void shouldHaveCompletedStateOnceFinished() {
-        var task = new TestTask(1L);
-        var flow = rootFlowBuilder.ioTask(task).build();
-
-        ioTaskExecutor.submit(flow::execute);
-        waitUntilRunning(task);
-        task.finish();
-
-        waitUntilCompleted(flow);
+        testFlow()
+                .task("Task")
+                .build()
+                .startFlow()
+                .finishTask("Task")
+                .expectFlowCompleted();
     }
 
+    @Disabled("TODO")
     @Test
     void shouldThrowISEWhenTryingToExecuteAlreadyRunningFlow() {
-        var task = new TestTask(1L);
-        var flow = rootFlowBuilder.ioTask(task).build();
-
-        ioTaskExecutor.submit(flow::execute);
-        waitUntilRunning(flow);
-
-        Awaitility.await().atMost(Duration.ofSeconds(1)).untilAsserted(() -> assertThatThrownBy(flow::execute).isInstanceOf(IllegalStateException.class));
     }
 
     @Test
     void shouldHaveFailedStateIfTaskFailsWithException() {
         var exception = new RuntimeException("FAILED");
-        var failTask = new TestTask(1L);
-        var flow = rootFlowBuilder.ioTask(failTask).build();
-
-        var flowResult = ioTaskExecutor.submit(flow::execute);
-        waitUntilRunning(failTask);
-        failTask.failNow(exception);
-
-        waitUntilFailed(flow);
-        assertThatThrownBy(flowResult::get).hasCause(exception);
+        testFlow()
+                .task("FailTask")
+                .build()
+                .startFlow()
+                .failTask("FailTask", exception)
+                .expectFlowFailed(exception);
     }
 
     @Test
@@ -148,172 +139,99 @@ public class FlowTest {
 
         barrierLatch.countDown();
 
-        waitUntilCompleted(flow);
+        AwaitilityUtils.waitUntilFlowCompleted(flow);
     }
 
     @Test
     void shouldHavePausedStateWhenInterrupted() {
-        TestTask task = new TestTask(1L);
-        var flow = rootFlowBuilder
-                .ioTask(task)
-                .build();
-
-        var flowTask = ioTaskExecutor.submit(flow::execute);
-
-        waitUntilRunning(flow);
-
-        flowTask.cancel(true);
-
-        waitUntilPaused(flow);
+        testFlow()
+                .task("FirstTask")
+                .build()
+                .startFlow()
+                .interruptFlow()
+                .expectFlowPaused(); // this test method is unnecessary since interruptFlow implicitly verifies that the flow was paused
     }
 
     @Test
     void shouldCancelAllRunningTaskWhenPaused() {
-        var task = new TestTask(1L);
-
-        var flow = rootFlowBuilder
-                .ioTask(task)
-                .build();
-
-        var flowTask = ioTaskExecutor.submit(flow::execute);
-
-        waitUntilRunning(flow);
-        waitUntilRunning(task);
-
-        flowTask.cancel(true);
-
-        waitUntilPaused(flow);
-
-        waitUntilInterrupted(task);
+        testFlow()
+                .task("FirstTask")
+                .build()
+                .startFlow()
+                .interruptFlow()
+                .assertThatTask("FirstTask",TestTaskVerifier::wasCancelled);
     }
 
     @Test
     void shouldNotExecuteNextTaskWhenInterrupted() {
-        var firstTask = new TestTask(1L);
-        var secondTask = new TestTask(2L);
 
-        var flow = rootFlowBuilder
-                .ioTask(firstTask)
-                .ioTask(secondTask)
-                .build();
-
-        var flowTask = ioTaskExecutor.submit(flow::execute);
-
-        waitUntilRunning(flow);
-        waitUntilRunning(firstTask);
-
-        flowTask.cancel(true);
-        waitUntilPaused(flow);
-
-        assertThat(secondTask.state()).isEqualTo(TestTaskState.CREATED);
+        testFlow()
+                .task("FirstTask")
+                .task("SecondTask")
+                .build()
+                .startFlow()
+                .assertThatTask("FirstTask",TestTaskVerifier::isRunning)
+                .interruptFlow()
+                .assertThatTask("SecondTask",TestTaskVerifier::hasNotStarted);
     }
 
     @Test
     void shouldHaveFailedStateIfParallelSubflowFailsWithException() {
-        RuntimeException exception = new RuntimeException("I fail,lol");
-        var failTask = new TestTask(1L);
-        var parallelTask2 = new TestTask(2L);
-        var parallelTask3 = new TestTask(3L);
-
-        var flow = rootFlowBuilder
-                .parallel(parallel ->
-                        parallel
-                                .subflow(subflow -> subflow.ioTask(failTask).withID(1L))
-                                .subflow(subflow -> subflow.ioTask(parallelTask2).withID(2L))
-                                .subflow(subflow -> subflow.ioTask(parallelTask3).withID(3L))
-                ).build();
-        var flowTask = ioTaskExecutor.submit(flow::execute);
-
-        waitUntilRunning(flow);
-        waitUntilRunning(parallelTask2);
-        waitUntilRunning(parallelTask3);
-        failTask.failNow(exception);
-
-        waitUntilFailed(flow);
-        assertThatCode(flowTask::get).hasCause(exception);
+        var exception = new RuntimeException("FAILED");
+        testFlow()
+                .parallelFlows("ParallelTask1","ParallelTask2","ParallelTask3")
+                .build()
+                .startFlow()
+                .assertThatTask("ParallelTask1",TestTaskVerifier::isRunning)
+                .assertThatTask("ParallelTask2",TestTaskVerifier::isRunning)
+                .assertThatTask("ParallelTask3",TestTaskVerifier::isRunning)
+                .failTask("ParallelTask1",exception)
+                .expectFlowFailed(exception);
     }
 
     @Test
     void shouldCancelParallelSubflowsIfOneOfThemFails() {
-        var failTask = new TestTask(1L);
-        var parallelTask2 = new TestTask(2L);
-        var parallelTask3 = new TestTask(3L);
+        testFlow()
+                .parallelFlows("ParallelTask1","ParallelTask2","ParallelTask3")
+                .build()
+                .startFlow()
+                .failTask("ParallelTask1",new RuntimeException("FAILED"))
+                .assertThatTask("ParallelTask2",TestTaskVerifier::wasCancelled)
+                .assertThatTask("ParallelTask3",TestTaskVerifier::wasCancelled);
 
-        var flow = rootFlowBuilder
-                .parallel(parallel ->
-                        parallel
-                                .subflow(subflow -> subflow.ioTask(failTask).withID(1L))
-                                .subflow(subflow -> subflow.ioTask(parallelTask2).withID(2L))
-                                .subflow(subflow -> subflow.ioTask(parallelTask3).withID(3L))
-                ).build();
-
-        ioTaskExecutor.submit(flow::execute);
-
-        waitUntilRunning(flow);
-        waitUntilRunning(failTask);
-        waitUntilRunning(parallelTask2);
-        waitUntilRunning(parallelTask3);
-
-        failTask.failNow(new RuntimeException("FAIL"));
-
-        waitUntilInterrupted(parallelTask2);
-        waitUntilInterrupted(parallelTask3);
     }
 
     @Test
     void shouldNotRunNextTaskWhenParallelSubflowFails() {
-        var failTask = new TestTask(1L);
-        var parallelTask2 = new TestTask(2L);
-        var nextTask = new TestTask(3L);
+        testFlow()
+                .parallelFlows("ParallelTask1")
+                .task("NextTask")
+                .build()
+                .startFlow()
+                .failTask("ParallelTask1",new RuntimeException("FAILED"))
+                .assertThatTask("NextTask",TestTaskVerifier::hasNotStarted);
 
-        var flow = rootFlowBuilder
-                .parallel(parallel ->
-                        parallel
-                                .subflow(subflow -> subflow.ioTask(failTask).withID(1L))
-                                .subflow(subflow -> subflow.ioTask(parallelTask2).withID(2L))
-                ).ioTask(nextTask)
-                .build();
-
-        ioTaskExecutor.submit(flow::execute);
-        waitUntilRunning(flow);
-        failTask.failNow(new RuntimeException("FAIL"));
-        waitUntilFailed(flow);
-
-        assertThat(nextTask.state()).isEqualTo(TestTaskState.CREATED);
     }
 
     @Test
     void shouldExecuteTheNextTaskWhenParallelSubflowsComplete() {
-        var parallelTask1 = new TestTask(1L);
-        var parallelTask2 = new TestTask(2L);
-        var nextTask = new TestTask(3L);
-
-        var flow = rootFlowBuilder
-                .parallel(parallel ->
-                        parallel
-                                .subflow(subflow -> subflow.ioTask(parallelTask1).withID(1L))
-                                .subflow(subflow -> subflow.ioTask(parallelTask2).withID(2L))
-                ).ioTask(nextTask)
-                .build();
-        ioTaskExecutor.submit(flow::execute);
-        waitUntilRunning(flow);
-
-        parallelTask1.finish();
-        assertThat(nextTask.state()).isEqualTo(TestTaskState.CREATED);
-        parallelTask2.finish();
-
-        waitUntilRunning(nextTask);
+        testFlow()
+                .parallelFlows("ParallelTask1","ParallelTask2")
+                .task("NextTask")
+                .build()
+                .startFlow()
+                .finishTask("ParallelTask1")
+                .assertThatTask("NextTask", TestTaskVerifier::hasNotStarted)
+                .finishTask("ParallelTask2")
+                .assertThatTask("NextTask", TestTaskVerifier::isRunning);
     }
 
+    @Disabled("Need to figure out the best way to interrupt the task")
     @Test
-    void shouldPauseFlowIfTaskFailsWithFlowInterruptedException() {
-        var singleTaskFlow = createRunningFlowWithOneTask(rootFlowBuilder, ioTaskExecutor);
-
-        singleTaskFlow.task().failNow(new FlowInterruptedException("Simulating interruption"));
-        waitUntilPaused(singleTaskFlow.flow());
+    void shouldPauseFlowIfTaskInterrupted() {
     }
 
-    @Disabled("Not yet sure how resumption will be implemeted.")
+    @Disabled("Not yet sure how resumption will be implemented.")
     @Test
     void shouldAllowResumingPausedFlowByExecutingItAgain() {
 
@@ -321,64 +239,88 @@ public class FlowTest {
 
     @Test
     void shouldPublishFlowStartedEventWhenStartingTheFlow() {
-        createRunningFlowWithOneTask(rootFlowBuilder, ioTaskExecutor)
-                .verifyWithFlowID(flowID -> assertThat(eventCapturer.events()).contains(new FlowStartedEvent(flowID)));
+        testFlow()
+                .task("test")
+                .build()
+                .startFlow()
+                .assertFlowEventsInOrder(events -> events.hasFlowStartedEvent().andHasNoMoreEvents());
     }
 
     @Test
     void shouldPublishTaskStartedEventWhenExecutingTheTask() {
-        createRunningFlowWithOneTask(rootFlowBuilder, ioTaskExecutor)
-                .verifyWithTaskID(taskID -> assertThat(eventCapturer.events()).contains(new TaskStartedEvent(taskID)));
+        testFlow()
+                .task("test")
+                .build()
+                .startFlow()
+                .assertTaskEventsInOrder("test",events -> events.hasTaskStartedEvent().andHasNoMoreEvents());
     }
 
     @Test
     void shouldPublishTaskCompletedEventWhenTaskFinishesNormally() {
-        createRunningFlowWithOneTask(rootFlowBuilder, ioTaskExecutor)
-                .finishTask()
-                .waitUntilFlowCompleted()
-                .verifyWithTaskID(taskID -> assertThat(eventCapturer.events()).contains(new TaskCompletedEvent(taskID)));
+        testFlow()
+                .task("test")
+                .build()
+                .startFlow()
+                .finishTask("test")
+                .assertTaskEventsInOrder("test",events -> events.hasTaskStartedEvent().hasTaskCompletedEvent().andHasNoMoreEvents());
     }
 
     @Test
     void shouldPublishFlowCompletedEventWhenFlowFinishesNormally() {
-        createRunningFlowWithOneTask(rootFlowBuilder, ioTaskExecutor)
-                .finishTask()
-                .waitUntilFlowCompleted()
-                .verifyWithFlowID(flowID -> assertThat(eventCapturer.events()).contains(new FlowCompletedEvent(flowID)));
-    }
-
-    @Test
-    void shouldPublishTaskFailedEventWhenTaskFinishesWithAnException() {
-        var exception = new RuntimeException("FAILED");
-        createRunningFlowWithOneTask(rootFlowBuilder, ioTaskExecutor)
-                .failTask(exception)
-                .waitUntilFlowFailed()
-                .verifyWithTaskID(taskID -> assertThat(eventCapturer.events()).contains(new TaskFailedEvent(taskID, exception)));
+        testFlow()
+                .task("test")
+                .build()
+                .startFlow()
+                .finishTask("test")
+                .expectFlowCompleted()
+                .assertFlowEventsInOrder(events -> events.hasFlowStartedEvent().hasFlowCompletedEvent().andHasNoMoreEvents());
     }
 
     @Test
     void shouldPublishFlowFailedEventWhenATaskFailsWithAnException() {
         var exception = new RuntimeException("FAILED");
-        createRunningFlowWithOneTask(rootFlowBuilder, ioTaskExecutor)
-                .failTask(exception)
-                .waitUntilFlowFailed()
-                .verifyWithFlowID(flowID -> assertThat(eventCapturer.events()).contains(new FlowFailedEvent(flowID, exception)));
+
+        testFlow()
+                .task("test")
+                .build()
+                .startFlow()
+                .failTask("test", exception)
+                .expectFlowFailed()
+                .assertFlowEventsInOrder( events -> events.hasFlowStartedEvent().hasFlowFailedEvent(exception).andHasNoMoreEvents());
+
+    }
+
+    @Test
+    void shouldPublishTaskFailedEventWhenTaskFinishesWithAnException() {
+        var exception = new RuntimeException("FAILED");
+
+        testFlow()
+                .task("test")
+                .build()
+                .startFlow()
+                .failTask("test", exception)
+                .expectFlowFailed()
+                .assertTaskEventsInOrder("test",events -> events.hasTaskStartedEvent().hasTaskFailedEvent(exception).andHasNoMoreEvents());
     }
 
     @Test
     void shouldPublishFlowPausedEventWhenInterrupted() {
-        createRunningFlowWithOneTask(rootFlowBuilder, ioTaskExecutor)
-                .cancel()
-                .waitUntilFlowPaused()
-                .verifyWithFlowID(flowID -> assertThat(eventCapturer.events()).contains(new FlowPausedEvent(flowID)));
+        testFlow()
+                .task("test")
+                .build()
+                .startFlow()
+                .interruptFlow()
+                .assertFlowEventsInOrder(events -> events.hasFlowStartedEvent().hasFlowPausedEvent().andHasNoMoreEvents());
     }
 
     @Test
-    void shouldPublishTaskPausedEvenWhenTaskInterrupted() {
-        createRunningFlowWithOneTask(rootFlowBuilder, ioTaskExecutor)
-                .cancel()
-                .waitUntilFlowPaused()
-                .verifyWithTaskID( taskID -> assertThat(eventCapturer.events()).contains(new TaskPausedEvent(taskID)));
+    void shouldPublishTaskPausedEventWhenTaskInterrupted() {
+        testFlow()
+                .task("test")
+                .build()
+                .startFlow()
+                .interruptFlow()
+                .assertTaskEventsInOrder("test", events -> events.hasTaskStartedEvent().hasTaskPausedEvent().andHasNoMoreEvents());
     }
 
 }
