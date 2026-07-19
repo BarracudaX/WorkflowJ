@@ -47,7 +47,7 @@ public final class TestUtils {
         }
     }
 
-    public record ParallelTask(CountDownLatch notifyReadyLatch, CountDownLatch barrierLatch) implements Task<Void, Void> {
+    public record ParallelTestTask(CountDownLatch notifyReadyLatch, CountDownLatch barrierLatch) implements Task<Void, Void> {
 
         @Override
         public Void execute(Void input) {
@@ -61,6 +61,9 @@ public final class TestUtils {
         }
     }
 
+    /**
+     * A task that captures the thread type on which its execute method was called.
+     */
     public static class TaskCapturingThread implements Task<Void,Void>{
 
         public enum TaskThread{
@@ -82,6 +85,9 @@ public final class TestUtils {
 
     }
 
+    /**
+     * A task that blocks on a latch that can be released with finish method.
+     */
     public static class BlockingTask implements Task<Void, Void> {
 
         public enum TaskState {
@@ -129,12 +135,15 @@ public final class TestUtils {
         }
     }
 
-    public static class FailOnCommandTask implements Task<Void,Void>{
+    /**
+     * This task runs busy-waiting until asked to fail. Throws the provided exceptions when asked to fail.
+     */
+    public static class FailOnDemandTask implements Task<Void,Void>{
 
         private final AtomicReference<Boolean> shouldFail = new AtomicReference<>(false);
         private final RuntimeException exception;
 
-        public FailOnCommandTask(RuntimeException exception) {
+        public FailOnDemandTask(RuntimeException exception) {
             this.exception = exception;
         }
 

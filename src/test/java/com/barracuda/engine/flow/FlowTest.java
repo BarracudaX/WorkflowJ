@@ -2,9 +2,7 @@ package com.barracuda.engine.flow;
 
 import com.barracuda.engine.builder.RootFlowBuilder;
 import com.barracuda.engine.task.Task;
-import lombok.Getter;
 import org.awaitility.Awaitility;
-import org.awaitility.core.ConditionTimeoutException;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -15,7 +13,6 @@ import java.time.Duration;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.atomic.AtomicReference;
 
 import static com.barracuda.engine.flow.TestUtils.*;
 import static com.barracuda.engine.flow.TestUtils.BlockingTask.*;
@@ -123,9 +120,9 @@ public class FlowTest {
         var flow = rootFlowBuilder
                 .parallel(parallel ->
                         parallel
-                                .subflow( subflow -> subflow.ioTask(new ParallelTask(readinessLatch,barrierLatch)))
-                                .subflow( subflow -> subflow.ioTask(new ParallelTask(readinessLatch,barrierLatch)))
-                                .subflow( subflow -> subflow.ioTask(new ParallelTask(readinessLatch,barrierLatch)))
+                                .subflow( subflow -> subflow.ioTask(new ParallelTestTask(readinessLatch,barrierLatch)))
+                                .subflow( subflow -> subflow.ioTask(new ParallelTestTask(readinessLatch,barrierLatch)))
+                                .subflow( subflow -> subflow.ioTask(new ParallelTestTask(readinessLatch,barrierLatch)))
                 ).build();
 
         ioTaskExecutor.submit(flow::execute);
@@ -196,7 +193,7 @@ public class FlowTest {
     @Test
     void shouldHaveFailedStateIfParallelSubflowFailsWithException(){
         RuntimeException exception = new RuntimeException("I fail,lol");
-        var failTask = new FailOnCommandTask(exception);
+        var failTask = new FailOnDemandTask(exception);
         var parallelTask2 = new BlockingTask();
         var parallelTask3 = new BlockingTask();
 
@@ -220,8 +217,7 @@ public class FlowTest {
 
     @Test
     void shouldCancelParallelSubflowsIfOneOfThemFails() {
-        RuntimeException exception = new RuntimeException("I fail,lol");
-        var failTask = new FailOnCommandTask(exception);
+        var failTask = new FailOnDemandTask(new RuntimeException("I fail,lol"));
         var parallelTask2 = new BlockingTask();
         var parallelTask3 = new BlockingTask();
 
@@ -232,7 +228,7 @@ public class FlowTest {
                                 .subflow( subflow -> subflow.ioTask(parallelTask2))
                                 .subflow( subflow -> subflow.ioTask(parallelTask3))
                 ).build();
-        var flowTask = ioTaskExecutor.submit(flow::execute);
+        ioTaskExecutor.submit(flow::execute);
 
         waitUntilRunning(flow);
         parallelTask2.waitUntilRunning();
@@ -244,6 +240,49 @@ public class FlowTest {
         parallelTask3.waitUntilInterrupted();
     }
 
+    @Test
+    void shouldStopFlowExecutionWhenParallelSubflowFails() {
+        var failTask = new FailOnDemandTask(new RuntimeException("I fail,lol"));
+        var parallelTask2 = new BlockingTask();
+        var nextTask = new BlockingTask();
 
+        var flow = rootFlowBuilder
+                .parallel(parallel ->
+                        parallel
+                                .subflow( subflow -> subflow.ioTask(failTask))
+                                .subflow( subflow -> subflow.ioTask(parallelTask2))
+                ).ioTask(nextTask)
+                .build();
 
+        ioTaskExecutor.submit(flow::execute);
+        waitUntilRunning(flow);
+        failTask.failNow();
+        waitUntilFailed(flow);
+
+        assertThat(nextTask.state()).isEqualTo(TaskState.CREATED);
+    }
+
+    @Test
+    void shouldExecuteTheNextTaskWhenParallelSubflowsComplete() {
+        var parallelTask1 = new BlockingTask();
+        var parallelTask2 = new BlockingTask();
+        var nextTask = new BlockingTask();
+
+        var flow = rootFlowBuilder
+                .parallel(parallel ->
+                        parallel
+                                .subflow( subflow -> subflow.ioTask(parallelTask1))
+                                .subflow( subflow -> subflow.ioTask(parallelTask2))
+                ).ioTask(nextTask)
+                .build();
+        ioTaskExecutor.submit(flow::execute);
+        waitUntilRunning(flow);
+
+        parallelTask1.finish();
+        assertThat(nextTask.state()).isEqualTo(TaskState.CREATED);
+
+        parallelTask2.finish();
+
+        nextTask.waitUntilRunning();
+    }
 }
