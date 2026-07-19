@@ -2,6 +2,7 @@ package com.barracuda.engine.chain;
 
 import com.barracuda.engine.event.FlowEvent;
 import com.barracuda.engine.event.FlowEvent.TaskCompletedEvent;
+import com.barracuda.engine.event.FlowEvent.TaskFailedEvent;
 import com.barracuda.engine.event.FlowEvent.TaskStartedEvent;
 import com.barracuda.engine.flow.FlowInterruptedException;
 import com.barracuda.engine.task.Task;
@@ -55,17 +56,26 @@ public class TaskNode<I,R> implements ChainNode{
 
     }
 
-    private void handle(Throwable cause, Future<R> task) {
+    private void handle(Throwable cause, Future<R> taskFuture) {
         switch (cause){
-            case ExecutionException ex -> handle(ex.getCause(),task);
-            case InterruptedException ex -> {
-                Thread.currentThread().interrupt();
-                task.cancel(true);
-                throw new FlowInterruptedException("Flow Interrupted", ex);
-            }
-            case RuntimeException ex -> throw ex;
-            default -> throw new RuntimeException(cause);
+            case ExecutionException ex -> handle(ex.getCause(),taskFuture);
+            case InterruptedException ex -> handleInterrupted(taskFuture, ex);
+            case RuntimeException ex -> handleRuntimeException(ex);
+            default -> handleRuntimeException(new RuntimeException(cause));
         }
+    }
+
+    private void handleInterrupted(Future<R> taskFuture, InterruptedException ex) {
+        Thread.currentThread().interrupt();
+        taskFuture.cancel(true);
+        FlowInterruptedException actualException = new FlowInterruptedException("Flow Interrupted", ex);
+
+        handleRuntimeException(actualException);
+    }
+
+    private void handleRuntimeException(RuntimeException ex) {
+        FLOW_CONTEXT.get().getFlowEventPublisher().publish(new TaskFailedEvent(task.id(), ex));
+        throw ex;
     }
 
 }

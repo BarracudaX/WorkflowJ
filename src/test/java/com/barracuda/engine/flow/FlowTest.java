@@ -2,8 +2,10 @@ package com.barracuda.engine.flow;
 
 import com.barracuda.engine.builder.RootFlowBuilder;
 import com.barracuda.engine.event.EvenPublisherImpl;
+import com.barracuda.engine.event.FlowEvent;
 import com.barracuda.engine.event.FlowEvent.FlowStartedEvent;
 import com.barracuda.engine.event.FlowEvent.TaskCompletedEvent;
+import com.barracuda.engine.event.FlowEvent.TaskFailedEvent;
 import com.barracuda.engine.event.FlowEvent.TaskStartedEvent;
 import com.barracuda.engine.event.FlowEventPublisher;
 import com.barracuda.engine.event.InMemoryEventCapturer;
@@ -308,16 +310,10 @@ public class FlowTest {
 
     @Test
     void shouldPauseFlowIfTaskFailsWithFlowInterruptedException() {
-        var task = new TestTask(1L);
+        var singleTaskFlow = createRunningFlowWithOneTask(rootFlowBuilder, ioTaskExecutor);
 
-        var flow  = rootFlowBuilder.ioTask(task).build();
-
-        ioTaskExecutor.submit(flow::execute);
-        waitUntilRunning(flow);
-        waitUntilRunning(task);
-
-        task.failNow(new FlowInterruptedException("Simulating interruption"));
-        waitUntilPaused(flow);
+        singleTaskFlow.task().failNow(new FlowInterruptedException("Simulating interruption"));
+        waitUntilPaused(singleTaskFlow.flow());
     }
 
     @Test
@@ -344,44 +340,39 @@ public class FlowTest {
 
     @Test
     void shouldPublishFlowStartedEventWhenStartingTheFlow() {
-        var task = new TestTask(1L);
-        var flow = rootFlowBuilder
-                .ioTask(task)
-                .build();
+        var singleTaskFlow = createRunningFlowWithOneTask(rootFlowBuilder, ioTaskExecutor);
 
-        assertThat(eventCapturer.events()).isEmpty();
-
-        ioTaskExecutor.submit(flow::execute);
-        waitUntilRunning(flow);
-
-        assertThat(eventCapturer.events()).contains(new FlowStartedEvent(flow.id()));
+        assertThat(eventCapturer.events()).contains(new FlowStartedEvent(singleTaskFlow.flow().id()));
     }
 
     @Test
     void shouldPublishTaskStartedEventWhenExecutingTheTask() {
-        var task = new TestTask(1L);
-        var flow = rootFlowBuilder.ioTask(task).build();
+        var singleTaskFlow = createRunningFlowWithOneTask(rootFlowBuilder, ioTaskExecutor);
 
-        ioTaskExecutor.submit(flow::execute);
-        waitUntilRunning(flow);
-        waitUntilRunning(task);
-
-        assertThat(eventCapturer.events()).contains(new TaskStartedEvent(task.id()));
+        assertThat(eventCapturer.events()).contains(new TaskStartedEvent(singleTaskFlow.task().id()));
     }
 
     @Test
     void shouldPublishTaskCompletedEventWhenTaskFinishesNormally() {
-        var task = new TestTask(1L);
-        var flow = rootFlowBuilder.ioTask(task).build();
+        var singleTaskFlow = createRunningFlowWithOneTask(rootFlowBuilder, ioTaskExecutor);
 
-        ioTaskExecutor.submit(flow::execute);
-        waitUntilRunning(flow);
-        waitUntilRunning(task);
+        singleTaskFlow.task().finish();
+        waitUntilCompleted(singleTaskFlow.flow());
 
-        task.finish();
-        waitUntilCompleted(flow);
-
-        assertThat(eventCapturer.events()).contains(new TaskCompletedEvent(task.id()));
+        assertThat(eventCapturer.events()).contains(new TaskCompletedEvent(singleTaskFlow.task().id()));
     }
+
+    @Test
+    void shouldPublishTaskFailedEventWhenTaskFinishesWithAnException() {
+        var singleTaskFlow = createRunningFlowWithOneTask(rootFlowBuilder, ioTaskExecutor);
+        var exception = new RuntimeException("FAILED");
+
+        singleTaskFlow.task().failNow(exception);
+        waitUntilFailed(singleTaskFlow.task());
+        waitUntilFailed(singleTaskFlow.flow());
+
+        assertThat(eventCapturer.events()).contains(new TaskFailedEvent(singleTaskFlow.task().id(), exception));
+    }
+
 
 }

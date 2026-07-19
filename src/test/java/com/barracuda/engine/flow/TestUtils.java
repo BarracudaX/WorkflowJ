@@ -1,5 +1,6 @@
 package com.barracuda.engine.flow;
 
+import com.barracuda.engine.builder.RootFlowBuilder;
 import com.barracuda.engine.task.Task;
 import lombok.Getter;
 import org.awaitility.Awaitility;
@@ -8,6 +9,7 @@ import org.awaitility.core.ConditionTimeoutException;
 import java.time.Duration;
 import java.util.Objects;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -154,6 +156,7 @@ public final class TestUtils {
             try{
                 latch.await();
                 if (failException != null) {
+                    state.set(TestTaskState.FAILED);
                     throw failException;
                 }
             }catch (InterruptedException ex){
@@ -187,6 +190,20 @@ public final class TestUtils {
         public TestTaskState state(){
             return state.get();
         }
+    }
+
+    public record RunningFlowWithOneTask(Flow flow, TestTask task, java.util.concurrent.Future<?> flowFuture) {
+    }
+
+    public static RunningFlowWithOneTask createRunningFlowWithOneTask(RootFlowBuilder rootFlowBuilder, ExecutorService executorService) {
+
+        TestTask task = new TestTask(1L);
+        var flow = rootFlowBuilder.ioTask(task).withID(1L).build();
+        var flowFuture = executorService.submit(flow::execute);
+        waitUntilRunning(flow);
+        waitUntilRunning(task);
+
+        return new RunningFlowWithOneTask(flow, task,flowFuture);
     }
 
 }
