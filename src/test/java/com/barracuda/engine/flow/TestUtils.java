@@ -6,6 +6,7 @@ import org.awaitility.Awaitility;
 import org.awaitility.core.ConditionTimeoutException;
 
 import java.time.Duration;
+import java.util.Objects;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -84,83 +85,87 @@ public final class TestUtils {
         }
 
     }
+    public enum TestTaskState {
+        CREATED, RUNNING,COMPLETED,INTERRUPTED,FAILED
+    }
 
     /**
-     * A task that blocks on a latch that can be released with finish method.
+     * A task that blocks on a latch that can be asked to either finish normally or with an exception.
+     * Note that before calling finish or fail, use waiUntilRunning to verify that the task runs; otherwise, an IllegalStateException will be thrown because the task isn't running.
      */
-    public static class BlockingTask implements Task<Void, Void> {
+    public static class TestTask implements Task<Void,Void>{
 
-        public enum TaskState {
-            CREATED, RUNNING,COMPLETED,INTERRUPTED
-        }
-
-        private final AtomicReference<TaskState> state = new AtomicReference<>(TaskState.CREATED);
+        private final AtomicReference<TestTaskState> state = new AtomicReference<>(TestTaskState.CREATED);
         private final CountDownLatch latch = new CountDownLatch(1);
+        private volatile RuntimeException failException;
 
         @Override
         public Void execute(Void input) {
-            state.set(TaskState.RUNNING);
-            try {
+            state.set(TestTaskState.RUNNING);
+
+            try{
                 latch.await();
-            } catch (InterruptedException e) {
-                state.set(TaskState.INTERRUPTED);
-                throw new RuntimeException(e);
+                if (failException != null) {
+                    throw failException;
+                }
+            }catch (InterruptedException ex){
+                state.set(TestTaskState.INTERRUPTED);
+                throw new RuntimeException(ex);
             }
-            state.set(TaskState.COMPLETED);
+
             return null;
         }
 
-        public void finish(){
+        public void failNow(RuntimeException failException){
+            if( !state.compareAndSet(TestTaskState.RUNNING, TestTaskState.COMPLETED)){
+                throw new IllegalStateException("Cannot make this task fail because its state is not RUNNING, but "+state.get());
+            }
+            this.failException = Objects.requireNonNull(failException);
             latch.countDown();
         }
 
-        public TaskState state(){
-            return state.get();
+        public void finish(){
+            if( !state.compareAndSet(TestTaskState.RUNNING, TestTaskState.COMPLETED)){
+                throw new IllegalStateException("Cannot finish this task because its state is not RUNNING, but "+state.get());
+            }
+            latch.countDown();
         }
 
         public void waitUntilRunning(){
             try {
-                Awaitility.await().atMost(Duration.ofSeconds(1)).untilAsserted(this::state,state -> assertThat(state).isEqualTo(TaskState.RUNNING));
+                Awaitility.await().atMost(Duration.ofSeconds(1)).untilAsserted(this::state,state -> assertThat(state).isEqualTo(TestTaskState.RUNNING));
             } catch (ConditionTimeoutException ex) {
                 throw new AssertionError("Failed waiting for the blocking task to start running.",ex);
             }
         }
 
+        public void waitUntilFinished(){
+            try {
+                Awaitility.await().atMost(Duration.ofSeconds(1)).untilAsserted(this::state,state -> assertThat(state).isEqualTo(TestTaskState.COMPLETED));
+            } catch (ConditionTimeoutException ex) {
+                throw new AssertionError("Failed waiting for the blocking task to finish.",ex);
+            }
+        }
+
+        public void waitUntilFailed(){
+            try {
+                Awaitility.await().atMost(Duration.ofSeconds(1)).untilAsserted(this::state,state -> assertThat(state).isEqualTo(TestTaskState.FAILED));
+            } catch (ConditionTimeoutException ex) {
+                throw new AssertionError("Failed waiting for the blocking task to finish.",ex);
+            }
+        }
+
         public void waitUntilInterrupted() {
             try {
-                Awaitility.await().atMost(Duration.ofSeconds(1)).untilAsserted(this::state,state -> assertThat(state).isEqualTo(TaskState.INTERRUPTED));
+                Awaitility.await().atMost(Duration.ofSeconds(1)).untilAsserted(this::state,state -> assertThat(state).isEqualTo(TestTaskState.INTERRUPTED));
             } catch (ConditionTimeoutException ex) {
                 throw new AssertionError("Failed waiting for the blocking task to get interrupted.",ex);
             }
         }
-    }
 
-    /**
-     * This task runs busy-waiting until asked to fail. Throws the provided exceptions when asked to fail.
-     */
-    public static class FailOnDemandTask implements Task<Void,Void>{
-
-        private final AtomicReference<Boolean> shouldFail = new AtomicReference<>(false);
-        private final RuntimeException exception;
-
-        public FailOnDemandTask(RuntimeException exception) {
-            this.exception = exception;
-        }
-
-        @Override
-        public Void execute(Void input) {
-            while(!shouldFail.get()){
-                try {
-                    Thread.sleep(50);
-                } catch (InterruptedException e) {
-                    throw new RuntimeException(e);
-                }
-            }
-            throw exception;
-        }
-
-        public void failNow(){
-            shouldFail.set(true);
+        public TestTaskState state(){
+            return state.get();
         }
     }
+
 }
