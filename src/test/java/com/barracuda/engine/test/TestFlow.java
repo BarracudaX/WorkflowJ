@@ -35,7 +35,7 @@ public final class TestFlow {
         return this;
     }
 
-    public TestFlow interruptFlow() {
+    public TestFlow interruptFlowAndExpectFlowPaused() {
         flowTask.cancel(true);
         AwaitilityUtils.waitUntilFlowPaused(flow);
         return this;
@@ -86,6 +86,26 @@ public final class TestFlow {
         consumer.accept(new TestTaskVerifier(getTaskByName(taskName)));
 
         return this;
+    }
+
+    public TestFlow assertTaskRunning(String taskName){
+        return assertThatTask(taskName, TestTaskVerifier::isRunning);
+    }
+
+    public TestFlow assertTaskCancelled(String taskName){
+        return assertThatTask(taskName, TestTaskVerifier::wasCancelled);
+    }
+
+    public TestFlow assertTaskNotStarted(String taskName){
+        return assertThatTask(taskName, TestTaskVerifier::hasNotStarted);
+    }
+
+    public TestFlow assertTaskRanOnPlatformThread(String taskName){
+        return assertThatTask(taskName, TestTaskVerifier::ranOnPlatformThread);
+    }
+
+    public TestFlow assertTaskRanOnVirtualThread(String taskName){
+        return assertThatTask(taskName, TestTaskVerifier::ranOnVirtualThread);
     }
 
     public TestFlow assertFlowEventsInOrder(Consumer<FlowEventsInOrderVerifier> consumer) {

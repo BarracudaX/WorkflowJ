@@ -2,13 +2,9 @@ package com.barracuda.engine.flow;
 
 import com.barracuda.engine.utility.AwaitilityUtils;
 import com.barracuda.engine.builder.RootFlowBuilder;
-import com.barracuda.engine.event.EvenPublisherImpl;
-import com.barracuda.engine.event.FlowEventPublisher;
-import com.barracuda.engine.event.InMemoryEventCapturer;
 import com.barracuda.engine.test.ParallelTestTask;
 import com.barracuda.engine.test.TestTaskVerifier;
 import org.awaitility.Awaitility;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -29,14 +25,8 @@ public class FlowTest {
 
     private final ExecutorService cpuTaskExecutor = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
     private final ExecutorService ioTaskExecutor = Executors.newVirtualThreadPerTaskExecutor();
-    private final InMemoryEventCapturer eventCapturer = new InMemoryEventCapturer();
-    private final FlowEventPublisher eventPublisher = new EvenPublisherImpl();
-    private final RootFlowBuilder rootFlowBuilder = new RootFlowBuilder(cpuTaskExecutor, ioTaskExecutor, eventPublisher).withID(1L);
+    private final RootFlowBuilder rootFlowBuilder = new RootFlowBuilder(cpuTaskExecutor, ioTaskExecutor).withID(1L);
 
-    @BeforeEach
-    void setUp() {
-        eventPublisher.subscribe(eventCapturer);
-    }
 
     @Test
     void shouldExecuteTasksInSpecifiedOrder(CapturedOutput output) {
@@ -61,7 +51,7 @@ public class FlowTest {
     void shouldAllowCreationOfEmptyFlow() {
         assertThatCode(rootFlowBuilder::build).doesNotThrowAnyException();
     }
-//
+
     @Test
     void shouldExecuteIoAndCpuTasksOnDifferentExecutors() {
 
@@ -73,8 +63,8 @@ public class FlowTest {
                 .startFlow()
                 .finishTask("IoTask")
                 .finishTask("CpuTask")
-                .assertThatTask("IoTask",TestTaskVerifier::ranOnVirtualThread)
-                .assertThatTask("CpuTask",TestTaskVerifier::ranOnPlatformThread);
+                .assertTaskRanOnVirtualThread("IoTask")
+                .assertTaskRanOnPlatformThread("CpuTask");
     }
 
     @Test
@@ -148,8 +138,7 @@ public class FlowTest {
                 .task("FirstTask")
                 .build()
                 .startFlow()
-                .interruptFlow()
-                .expectFlowPaused(); // this test method is unnecessary since interruptFlow implicitly verifies that the flow was paused
+                .interruptFlowAndExpectFlowPaused();
     }
 
     @Test
@@ -158,72 +147,72 @@ public class FlowTest {
                 .task("FirstTask")
                 .build()
                 .startFlow()
-                .interruptFlow()
-                .assertThatTask("FirstTask",TestTaskVerifier::wasCancelled);
+                .interruptFlowAndExpectFlowPaused()
+                .assertTaskCancelled("FirstTask");
     }
 
     @Test
     void shouldNotExecuteNextTaskWhenInterrupted() {
-
         testFlow()
                 .task("FirstTask")
                 .task("SecondTask")
                 .build()
                 .startFlow()
-                .assertThatTask("FirstTask",TestTaskVerifier::isRunning)
-                .interruptFlow()
-                .assertThatTask("SecondTask",TestTaskVerifier::hasNotStarted);
+                .assertTaskRunning("FirstTask")
+                .interruptFlowAndExpectFlowPaused()
+                .assertTaskCancelled("FirstTask")
+                .assertTaskNotStarted("SecondTask");
     }
 
     @Test
-    void shouldHaveFailedStateIfParallelSubflowFailsWithException() {
+    void flowShouldHaveFailedStateIfParallelSubflowFailsWithException() {
         var exception = new RuntimeException("FAILED");
         testFlow()
-                .parallelFlows("ParallelTask1","ParallelTask2","ParallelTask3")
+                .parallel("ParallelFailTask","ParallelTask2","ParallelTask3")
                 .build()
                 .startFlow()
-                .assertThatTask("ParallelTask1",TestTaskVerifier::isRunning)
-                .assertThatTask("ParallelTask2",TestTaskVerifier::isRunning)
-                .assertThatTask("ParallelTask3",TestTaskVerifier::isRunning)
-                .failTask("ParallelTask1",exception)
+                .assertTaskRunning("ParallelFailTask")
+                .assertTaskRunning("ParallelTask2")
+                .assertTaskRunning("ParallelTask3")
+                .failTask("ParallelFailTask",exception)
                 .expectFlowFailed(exception);
     }
 
     @Test
     void shouldCancelParallelSubflowsIfOneOfThemFails() {
         testFlow()
-                .parallelFlows("ParallelTask1","ParallelTask2","ParallelTask3")
+                .parallel("ParallelFailTask","ParallelTask2","ParallelTask3")
                 .build()
                 .startFlow()
-                .failTask("ParallelTask1",new RuntimeException("FAILED"))
-                .assertThatTask("ParallelTask2",TestTaskVerifier::wasCancelled)
-                .assertThatTask("ParallelTask3",TestTaskVerifier::wasCancelled);
+                .failTask("ParallelFailTask",new RuntimeException("FAILED"))
+                .assertTaskCancelled("ParallelTask2")
+                .assertTaskCancelled("ParallelTask3");
 
     }
 
     @Test
     void shouldNotRunNextTaskWhenParallelSubflowFails() {
         testFlow()
-                .parallelFlows("ParallelTask1")
+                .parallel("ParallelTask1")
                 .task("NextTask")
                 .build()
                 .startFlow()
                 .failTask("ParallelTask1",new RuntimeException("FAILED"))
-                .assertThatTask("NextTask",TestTaskVerifier::hasNotStarted);
+                .assertTaskNotStarted("NextTask");
 
     }
 
     @Test
     void shouldExecuteTheNextTaskWhenParallelSubflowsComplete() {
         testFlow()
-                .parallelFlows("ParallelTask1","ParallelTask2")
+                .parallel("ParallelTask1","ParallelTask2")
                 .task("NextTask")
                 .build()
                 .startFlow()
                 .finishTask("ParallelTask1")
-                .assertThatTask("NextTask", TestTaskVerifier::hasNotStarted)
+                .assertTaskNotStarted("NextTask")
                 .finishTask("ParallelTask2")
-                .assertThatTask("NextTask", TestTaskVerifier::isRunning);
+                .assertTaskRunning("NextTask");
     }
 
     @Disabled("Need to figure out the best way to interrupt the task")
@@ -309,7 +298,7 @@ public class FlowTest {
                 .task("test")
                 .build()
                 .startFlow()
-                .interruptFlow()
+                .interruptFlowAndExpectFlowPaused()
                 .assertFlowEventsInOrder(events -> events.hasFlowStartedEvent().hasFlowPausedEvent().andHasNoMoreEvents());
     }
 
@@ -319,7 +308,7 @@ public class FlowTest {
                 .task("test")
                 .build()
                 .startFlow()
-                .interruptFlow()
+                .interruptFlowAndExpectFlowPaused()
                 .assertTaskEventsInOrder("test", events -> events.hasTaskStartedEvent().hasTaskPausedEvent().andHasNoMoreEvents());
     }
 

@@ -27,7 +27,7 @@ public class TestFlowBuilder {
     /**
      * Creates parallel flows each with a single test task.
      */
-    public TestFlowBuilder parallelFlows(String... parallelTaskNames) {
+    public TestFlowBuilder parallel(String... parallelTaskNames) {
 
         rootFlowBuilder.parallel(parallel -> {
             for (String name : parallelTaskNames) {
