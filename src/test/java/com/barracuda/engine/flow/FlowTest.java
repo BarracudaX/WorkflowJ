@@ -215,11 +215,6 @@ public class FlowTest {
                 .assertTaskRunning("NextTask");
     }
 
-    @Disabled("Need to figure out the best way to interrupt the task")
-    @Test
-    void shouldPauseFlowIfTaskInterrupted() {
-    }
-
     @Disabled("Not yet sure how resumption will be implemented.")
     @Test
     void shouldAllowResumingPausedFlowByExecutingItAgain() {
