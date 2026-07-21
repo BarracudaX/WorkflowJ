@@ -1,5 +1,7 @@
 package com.barracuda.engine.flow;
 
+import com.barracuda.engine.event.ExecutionEvent;
+import com.barracuda.engine.event.ExecutionEvent.ContinueEvent;
 import com.barracuda.engine.utility.AwaitilityUtils;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
@@ -23,7 +25,8 @@ public class FlowTest extends AbstractFlowTest{
                 .runnableTask(() -> System.out.println("3"), 3L)
                 .build();
 
-        ioTaskExecutor.submit(flow::execute);
+        ioTaskExecutor.submit(() -> flow.event(new ContinueEvent(flow.id())));
+
         AwaitilityUtils.waitUntilFlowCompleted(flow);
 
         assertThat(output.getAll().lines().toList()).containsExactly("1", "2", "3");

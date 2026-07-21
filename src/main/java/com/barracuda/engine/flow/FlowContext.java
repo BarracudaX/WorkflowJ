@@ -1,14 +1,7 @@
 package com.barracuda.engine.flow;
 
 import com.barracuda.engine.event.FlowEventPublisher;
-import lombok.Getter;
 
-public class FlowContext {
+public record FlowContext(FlowEventPublisher flowEventPublisher, long flowID) {
 
-    @Getter
-    private final FlowEventPublisher flowEventPublisher;
-
-    public FlowContext(FlowEventPublisher flowEventPublisher) {
-        this.flowEventPublisher = flowEventPublisher;
-    }
 }

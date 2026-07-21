@@ -1,5 +1,7 @@
 package com.barracuda.engine.test;
 
+import com.barracuda.engine.event.ExecutionEvent;
+import com.barracuda.engine.event.ExecutionEvent.ContinueEvent;
 import com.barracuda.engine.utility.AwaitilityUtils;
 import com.barracuda.engine.event.InMemoryEventCapturer;
 import com.barracuda.engine.flow.Flow;
@@ -30,7 +32,7 @@ public final class TestFlow {
     }
 
     public TestFlow startFlow() {
-        flowTask = executorService.submit(flow::execute);
+        flowTask = executorService.submit( () -> flow.event(new ContinueEvent(flow.id())));
         AwaitilityUtils.waitUntilFlowRunning(flow);
         return this;
     }

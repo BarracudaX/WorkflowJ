@@ -26,7 +26,7 @@ public class TaskEventsInOrderVerifier {
 
     public TaskEventsInOrderVerifier hasTaskStartedEvent() {
         assertThat(getNextEvent())
-                .isInstanceOf(TaskEvent.TaskStartedEvent.class)
+                .isInstanceOf(TaskEvent.TaskStartEvent.class)
                 .satisfies(event -> assertThat(event.taskID()).isEqualTo(task.id()));
         return this;
     }

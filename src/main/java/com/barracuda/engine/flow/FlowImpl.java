@@ -2,12 +2,16 @@ package com.barracuda.engine.flow;
 
 import com.barracuda.engine.chain.ChainNode;
 import com.barracuda.engine.event.ExecutionEvent;
+import com.barracuda.engine.event.ExecutionEvent.ContinueEvent;
 import com.barracuda.engine.event.ExecutionEvent.FlowEvent.FlowCompletedEvent;
 import com.barracuda.engine.event.ExecutionEvent.FlowEvent.FlowFailedEvent;
-import com.barracuda.engine.event.ExecutionEvent.FlowEvent.FlowStartedEvent;
+import com.barracuda.engine.event.ExecutionEvent.FlowEvent.FlowPausedEvent;
+import com.barracuda.engine.event.ExecutionEvent.FlowEvent.FlowStartEvent;
 
+import java.util.ConcurrentModificationException;
 import java.util.Objects;
 import java.util.concurrent.StructuredTaskScope;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class FlowImpl implements Flow {
@@ -17,33 +21,61 @@ public class FlowImpl implements Flow {
     private final AtomicReference<FlowState> state = new AtomicReference<>(FlowState.CREATED);
     private final long id;
     private final FlowContext context;
+    private final AtomicBoolean havePublishedStartEvent = new AtomicBoolean(false);
 
-    public FlowImpl(ChainNode chainNode, long id, FlowContext context) {
+    public FlowImpl(ChainNode chainNode, FlowContext context) {
         this.context = Objects.requireNonNull(context);
         this.chainNode = chainNode;
-        this.id = id;
+        this.id = context.flowID();
     }
 
     @Override
-    public void execute() {
-        if (!state.compareAndSet(FlowState.CREATED, FlowState.RUNNING) && !state.compareAndSet(FlowState.PAUSED, FlowState.RUNNING)) {
-            throw new IllegalStateException("Flow cannot be executed because it is in invalid state. Flow state: "+ state.get());
+    public void event(ExecutionEvent event) {
+        if (state.get() == FlowState.COMPLETED) {
+            throw new IllegalStateException("Flow has already completed");
         }
 
-        context.getFlowEventPublisher().publish(new FlowStartedEvent(id));
+        switch (event){
+            case FlowStartEvent _ -> {
+                if(!havePublishedStartEvent.compareAndSet(false, true)) {
+                    //what other reasons could cause this?
+                    throw new ConcurrentModificationException("Flow potentially getting events from multiple threads.");
+                }
+            }
+            case FlowCompletedEvent _ -> state.set(FlowState.COMPLETED); // already completed.
+            case FlowFailedEvent ev -> {
+                state.set(FlowState.FAILED);
+                throw ev.exception();
+            }
+            case FlowPausedEvent _ -> state.set(FlowState.PAUSED);
+            case ContinueEvent _ ->{
+                if (!state.compareAndSet(FlowState.CREATED, FlowState.RUNNING) && !state.compareAndSet(FlowState.PAUSED, FlowState.RUNNING)) {
+                    throw new IllegalStateException("Flow cannot be started because it is in invalid state. Flow state: "+ state.get());
+                }
 
+                if(havePublishedStartEvent.compareAndSet(false, true)) {
+                    context.flowEventPublisher().publish(new FlowStartEvent(id));
+                }
+
+                propagateEvent(event);
+
+                context.flowEventPublisher().publish(new FlowCompletedEvent(id));
+                state.set(FlowState.COMPLETED);
+            }
+            default -> propagateEvent(event);
+        }
+    }
+
+    private void propagateEvent(ExecutionEvent event) {
         ScopedValue.where(FLOW_CONTEXT, context).run(() -> {
             try (var scope = StructuredTaskScope.open()){
-                scope.fork(chainNode::execute);
+                scope.fork(() -> chainNode.event(event));
 
                 scope.join();
             } catch (Exception e) {
                 handle(e);
             }
         });
-
-        context.getFlowEventPublisher().publish(new FlowCompletedEvent(id));
-        state.set(FlowState.COMPLETED);
     }
 
     private void handle(Throwable exception){
@@ -60,14 +92,14 @@ public class FlowImpl implements Flow {
         Thread.currentThread().interrupt();
         assert state.get() == FlowState.RUNNING;
         state.compareAndSet(FlowState.RUNNING, FlowState.PAUSED);
-        context.getFlowEventPublisher().publish(new ExecutionEvent.FlowEvent.FlowPausedEvent(id));
+        context.flowEventPublisher().publish(new FlowPausedEvent(id));
         throw ex;
     }
 
     private void failed(RuntimeException ex) {
         assert state.get() == FlowState.RUNNING;
         state.compareAndSet(FlowState.RUNNING, FlowState.FAILED);
-        context.getFlowEventPublisher().publish(new FlowFailedEvent(id,ex));
+        context.flowEventPublisher().publish(new FlowFailedEvent(id,ex));
 
         throw ex;
     }

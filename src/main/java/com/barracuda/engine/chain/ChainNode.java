@@ -1,7 +1,9 @@
 package com.barracuda.engine.chain;
 
+import com.barracuda.engine.event.ExecutionEvent;
+
 public interface ChainNode {
 
-    void execute();
+    void event(ExecutionEvent event);
 
 }

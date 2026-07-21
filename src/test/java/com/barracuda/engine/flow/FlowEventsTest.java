@@ -40,7 +40,6 @@ public class FlowEventsTest {
                 .failTask("test", exception)
                 .expectFlowFailed()
                 .assertFlowEventsInOrder( events -> events.hasFlowStartedEvent().hasFlowFailedEvent(exception).andHasNoMoreEvents());
-
     }
 
     @Test

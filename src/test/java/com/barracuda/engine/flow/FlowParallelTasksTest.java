@@ -1,5 +1,7 @@
 package com.barracuda.engine.flow;
 
+import com.barracuda.engine.event.ExecutionEvent;
+import com.barracuda.engine.event.ExecutionEvent.ContinueEvent;
 import com.barracuda.engine.test.ParallelTestTask;
 import com.barracuda.engine.utility.AwaitilityUtils;
 import org.awaitility.Awaitility;
@@ -28,7 +30,7 @@ public class FlowParallelTasksTest extends AbstractFlowTest{
                                 .subflow(subflow -> subflow.ioTask(new ParallelTestTask(readinessLatch, barrierLatch, 3L)).withID(3L))
                 ).build();
 
-        ioTaskExecutor.submit(flow::execute);
+        ioTaskExecutor.submit(() -> flow.event(new ContinueEvent(flow.id())));
 
         Awaitility.await().atMost(Duration.ofSeconds(1)).untilAsserted(readinessLatch::await);
 

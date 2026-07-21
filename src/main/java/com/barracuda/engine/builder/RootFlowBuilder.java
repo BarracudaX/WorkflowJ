@@ -28,9 +28,9 @@ public class RootFlowBuilder extends FlowBuilder<RootFlowBuilder> {
             current = node.apply(current);
         }
 
-        var context = new FlowContext(flowEventPublisher);
+        var context = new FlowContext(flowEventPublisher,id);
 
-        return new FlowImpl(current,id,context);
+        return new FlowImpl(current, context);
     }
 
     @Override
