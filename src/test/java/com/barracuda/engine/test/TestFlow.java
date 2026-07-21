@@ -82,7 +82,7 @@ public final class TestFlow {
         return this;
     }
 
-    public TestFlow assertThatTask(String taskName, Consumer<TestTaskVerifier> consumer) {
+    private TestFlow assertThatTask(String taskName, Consumer<TestTaskVerifier> consumer) {
         consumer.accept(new TestTaskVerifier(getTaskByName(taskName)));
 
         return this;
