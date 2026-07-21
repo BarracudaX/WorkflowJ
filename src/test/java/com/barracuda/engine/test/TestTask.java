@@ -12,7 +12,7 @@ import static com.barracuda.engine.utility.AwaitilityUtils.*;
  * A task that blocks on a latch that can be asked to either finish normally or with an exception.
  * Note that before calling finish or fail, use waiUntilRunning to verify that the task runs; otherwise, an IllegalStateException will be thrown because the task isn't running.
  */
-public class TestTask implements Task<Void, Void> {
+public class TestTask<I> implements Task<I, Void> {
 
     public enum TaskThread {
         VIRTUAL, PLATFORM, NONE
@@ -21,6 +21,7 @@ public class TestTask implements Task<Void, Void> {
     private final AtomicReference<TestTaskState> state = new AtomicReference<>(TestTaskState.CREATED);
     private final CountDownLatch latch = new CountDownLatch(1);
     private volatile RuntimeException failException;
+    private volatile I input;
     private final long id;
     private final AtomicReference<TaskThread> taskThread = new AtomicReference<>(TaskThread.NONE);
 
@@ -29,7 +30,7 @@ public class TestTask implements Task<Void, Void> {
     }
 
     @Override
-    public Void execute(Void input) {
+    public Void execute(I input) {
         if (Thread.currentThread().isVirtual()) {
             taskThread.set(TaskThread.VIRTUAL);
         } else {
@@ -39,6 +40,7 @@ public class TestTask implements Task<Void, Void> {
         state.set(TestTaskState.RUNNING);
 
         try {
+            this.input = input;
             latch.await();
             if (failException != null) {
                 state.set(TestTaskState.FAILED);
@@ -57,7 +59,7 @@ public class TestTask implements Task<Void, Void> {
         return id;
     }
 
-    public TestTask failNow(RuntimeException failException) {
+    public TestTask<I> failNow(RuntimeException failException) {
         if (!state.compareAndSet(TestTaskState.RUNNING, TestTaskState.COMPLETED)) {
             throw new IllegalStateException("Cannot make this task fail because its state is not RUNNING, but " + state.get());
         }
@@ -67,7 +69,7 @@ public class TestTask implements Task<Void, Void> {
         return this;
     }
 
-    public TestTask finish() {
+    public TestTask<I> finish() {
         if (!state.compareAndSet(TestTaskState.RUNNING, TestTaskState.COMPLETED)) {
             throw new IllegalStateException("Cannot finish this task because its state is not RUNNING, but " + state.get());
         }
@@ -92,5 +94,9 @@ public class TestTask implements Task<Void, Void> {
 
     public TaskThread taskThread() {
         return taskThread.get();
+    }
+
+    public I input() {
+        return input;
     }
 }

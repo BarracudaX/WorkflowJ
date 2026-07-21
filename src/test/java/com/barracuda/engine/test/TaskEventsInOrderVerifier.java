@@ -12,10 +12,10 @@ import static org.assertj.core.api.InstanceOfAssertFactories.type;
 
 public class TaskEventsInOrderVerifier {
 
-    private final TestTask task;
+    private final TestTask<?> task;
     private final List<TaskEvent> events = new ArrayList<>();
 
-    public TaskEventsInOrderVerifier(TestTask task, List<TaskEvent> events) {
+    public TaskEventsInOrderVerifier(TestTask<?> task, List<TaskEvent> events) {
         this.task = task;
         this.events.addAll(events);
     }

@@ -18,15 +18,15 @@ public final class TestFlow {
 
     private final Flow flow;
     private final ExecutorService executorService;
-    private final Map<String, TestTask> tasks;
+    private final Map<Class<?>, Map<String,TestTask<?>>> tasks;
     private final InMemoryEventCapturer eventCapturer;
     private Future<?> flowTask;
 
-    public TestFlow(Flow flow, ExecutorService executorService, Map<String, TestTask> tasks, InMemoryEventCapturer eventCapturer) {
+    public TestFlow(Flow flow, ExecutorService executorService, Map<Class<?>, Map<String,TestTask<?>>> tasks, InMemoryEventCapturer eventCapturer) {
         this.flow = flow;
         this.executorService = executorService;
-        this.tasks = tasks;
         this.eventCapturer = eventCapturer;
+        this.tasks = tasks;
     }
 
     public TestFlow startFlow() {
@@ -42,12 +42,12 @@ public final class TestFlow {
     }
 
     public TestFlow failTask(String taskName, RuntimeException exception) {
-        getTaskByName(taskName).failNow(exception).waitUntilFailed();
+        getTestTaskByName(taskName).failNow(exception).waitUntilFailed();
         return this;
     }
 
     public TestFlow finishTask(String taskName) {
-        getTaskByName(taskName).finish().waitUntilCompleted();
+        getTestTaskByName(taskName).finish().waitUntilCompleted();
         return this;
     }
 
@@ -83,8 +83,13 @@ public final class TestFlow {
     }
 
     private TestFlow assertThatTask(String taskName, Consumer<TestTaskVerifier> consumer) {
-        consumer.accept(new TestTaskVerifier(getTaskByName(taskName)));
+        consumer.accept(new TestTaskVerifier(getTestTaskByName(taskName)));
 
+        return this;
+    }
+
+    public <T> TestFlow assertConsumerTaskInput(String taskName, Class<T> clazz, Consumer<TestTaskVerifier<T>> verifier) {
+        verifier.accept(new TestTaskVerifier<>(getConsumerTaskByName(taskName, clazz)));
         return this;
     }
 
@@ -114,13 +119,21 @@ public final class TestFlow {
     }
 
     public TestFlow assertTaskEventsInOrder(String taskName, Consumer<TaskEventsInOrderVerifier> consumer) {
-        var task = getTaskByName(taskName);
+        var task = getTestTaskByName(taskName);
         consumer.accept(new TaskEventsInOrderVerifier(task, eventCapturer.taskEvents(task.id())));
         return this;
     }
 
-    private TestTask getTaskByName(String taskName) {
-        return Objects.requireNonNull(tasks.get(taskName), "Task " + taskName + " not found. Configured tasks:" + tasks.keySet());
+    private TestTask<Void> getTestTaskByName(String taskName) {
+        return Objects.requireNonNull(getConsumerTaskByName(taskName, Void.class));
+    }
+
+    private <I> TestTask<I> getConsumerTaskByName(String taskName,Class<I> clazz) {
+        Map<String,TestTask<?>> tasks = Objects.requireNonNull(this.tasks.get(clazz),"No task was found that accepts input of type " + clazz);
+
+        var task = Objects.requireNonNull(tasks.get(taskName), "Task " + taskName + " not found that accept input of type " + clazz + ". Configured tasks that accept input of type " + clazz + ": " + tasks.keySet());
+
+        return (TestTask<I>) task;
     }
 
 }

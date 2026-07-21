@@ -58,6 +58,10 @@ public abstract class FlowBuilder<T extends FlowBuilder<T>> {
         return ioTask(task, nullSupplier(), noopConsumer());
     }
 
+    public <I,R> T ioTask(Task<I,R> task, Supplier<I> supplier){
+        return ioTask(task,supplier,noopConsumer());
+    }
+
     public T withID(long id){
         this.id = id;
 
