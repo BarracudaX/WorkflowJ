@@ -2,7 +2,7 @@ package com.barracuda.engine.test.flow;
 
 import com.barracuda.engine.event.ExecutionEvent.FlowEvent;
 import com.barracuda.engine.event.ExecutionEvent.FlowEvent.FlowCompletedEvent;
-import com.barracuda.engine.event.ExecutionEvent.FlowEvent.FlowStartEvent;
+import com.barracuda.engine.event.ExecutionEvent.FlowEvent.FlowStartedEvent;
 import com.barracuda.engine.flow.Flow;
 import org.assertj.core.api.InstanceOfAssertFactories;
 
@@ -31,7 +31,7 @@ public class FlowEventsInOrderVerifier {
         FlowEvent nextEvent = getNextEvent();
         assertThat(nextEvent)
                 .withFailMessage("Expected FlowStartedEvent, but was "+nextEvent+". All remaining events: "+remainingEvents)
-                .isInstanceOf(FlowStartEvent.class)
+                .isInstanceOf(FlowStartedEvent.class)
                 .satisfies(event -> assertThat(event.flowID()).isEqualTo(flow.id()));
         return this;
     }

@@ -1,6 +1,7 @@
 package com.barracuda.engine.flow;
 
-import com.barracuda.engine.event.ExecutionEvent.ContinueEvent;
+import com.barracuda.engine.event.ExecutionEvent;
+import com.barracuda.engine.event.ExecutionEvent.CommandEvent.Continue;
 import com.barracuda.engine.utility.AwaitilityUtils;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
@@ -26,7 +27,7 @@ public class FlowTest extends AbstractFlowTest{
                 .runnableTask(() -> System.out.println("3"), 3L)
                 .build();
 
-        ioTaskExecutor.submit(() -> flow.event(new ContinueEvent()));
+        ioTaskExecutor.submit(() -> flow.event(new Continue()));
 
         AwaitilityUtils.waitUntilFlowCompleted(flow, Duration.ofSeconds(1));
 
@@ -51,12 +52,6 @@ public class FlowTest extends AbstractFlowTest{
                 .finishTask("CpuTask")
                 .assertTaskRanOnVirtualThread("IoTask")
                 .assertTaskRanOnPlatformThread("CpuTask");
-    }
-
-    @Disabled("Not yet sure how resumption will be implemented.")
-    @Test
-    void shouldAllowResumingPausedFlowByExecutingItAgain() {
-
     }
 
     @Disabled("need to figure out how to assert sequentiality")

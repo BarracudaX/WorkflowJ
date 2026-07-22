@@ -10,11 +10,11 @@ import static com.barracuda.engine.test.builder.TestFlowBuilder.testFlow;
 public class FlowStateTest {
 
     @Test
-    void newlyCreatedFlowShouldBeInCreatedState() {
+    void newlyCreatedFlowShouldBeInReadyState() {
         testFlow()
                 .task("Task")
                 .build()
-                .expectFlowInCreatedState();
+                .expectFlowReady();
     }
 
     @Test

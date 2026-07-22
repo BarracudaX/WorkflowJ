@@ -1,6 +1,7 @@
 package com.barracuda.engine.chain;
 
 import com.barracuda.engine.event.ExecutionEvent;
+import com.barracuda.engine.event.ExecutionEvent.CommandEvent.Continue;
 import com.barracuda.engine.event.ExecutionEvent.FlowEvent;
 import com.barracuda.engine.flow.Flow;
 import com.barracuda.engine.flow.FlowInterruptedException;
@@ -29,7 +30,7 @@ public class ParallelNode implements ChainNode {
                 subflows.get(ev.flowID()).event(event);
                 return;
             }
-            case ExecutionEvent.ContinueEvent _ ->{
+            case Continue _ ->{
 
             }
             default -> {

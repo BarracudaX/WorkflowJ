@@ -3,7 +3,7 @@ package com.barracuda.engine.event;
 import com.barracuda.engine.event.ExecutionEvent.FlowEvent.FlowCompletedEvent;
 import com.barracuda.engine.event.ExecutionEvent.FlowEvent.FlowFailedEvent;
 import com.barracuda.engine.event.ExecutionEvent.FlowEvent.FlowPausedEvent;
-import com.barracuda.engine.event.ExecutionEvent.FlowEvent.FlowStartEvent;
+import com.barracuda.engine.event.ExecutionEvent.FlowEvent.FlowStartedEvent;
 import com.barracuda.engine.event.ExecutionEvent.SubflowEvent.SubflowCompletedEvent;
 import com.barracuda.engine.event.ExecutionEvent.SubflowEvent.SubflowFailedEvent;
 import com.barracuda.engine.event.ExecutionEvent.SubflowEvent.SubflowPausedEvent;
@@ -24,7 +24,7 @@ public class SubflowEventPublisherDecorator implements FlowEventPublisher {
     @Override
     public void publish(ExecutionEvent event) {
         switch (event){
-            case FlowStartEvent(long flowID) when flowID == subflowID -> flowEventPublisher.publish(new SubflowStartedEvent(rootID, subflowID));
+            case FlowStartedEvent(long flowID) when flowID == subflowID -> flowEventPublisher.publish(new SubflowStartedEvent(rootID, subflowID));
             case FlowCompletedEvent(long flowID) when flowID == subflowID -> flowEventPublisher.publish(new SubflowCompletedEvent(rootID,subflowID));
             case FlowFailedEvent(long flowID, RuntimeException exception) when flowID == subflowID -> flowEventPublisher.publish(new SubflowFailedEvent(rootID,subflowID,exception));
             case FlowPausedEvent(long flowID) when flowID == subflowID -> flowEventPublisher.publish(new SubflowPausedEvent(rootID,subflowID));

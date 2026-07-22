@@ -1,8 +1,14 @@
 package com.barracuda.engine.event;
 
+
 public sealed interface ExecutionEvent {
 
-    record ContinueEvent() implements ExecutionEvent{}
+    sealed interface CommandEvent extends ExecutionEvent {
+
+        record Continue() implements CommandEvent{}
+
+        record Reset() implements CommandEvent{}
+    }
 
     sealed interface SubflowEvent extends ExecutionEvent{
         long rootID();
@@ -21,7 +27,7 @@ public sealed interface ExecutionEvent {
     sealed interface FlowEvent extends ExecutionEvent{
         long flowID();
 
-        record FlowStartEvent(long flowID) implements FlowEvent { }
+        record FlowStartedEvent(long flowID) implements FlowEvent { }
 
         record FlowCompletedEvent(long flowID) implements FlowEvent { }
 

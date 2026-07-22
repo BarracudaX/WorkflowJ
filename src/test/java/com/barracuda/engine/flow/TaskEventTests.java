@@ -5,7 +5,7 @@ import org.junit.jupiter.api.Test;
 import static com.barracuda.engine.test.builder.TestFlowBuilder.testFlow;
 
 /**
- * Tests related to task evenets
+ * Tests related to task events
  */
 public class TaskEventTests {
 

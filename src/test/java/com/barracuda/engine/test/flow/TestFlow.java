@@ -1,7 +1,9 @@
 package com.barracuda.engine.test.flow;
 
 import com.barracuda.engine.event.ExecutionEvent;
-import com.barracuda.engine.event.ExecutionEvent.ContinueEvent;
+import com.barracuda.engine.event.ExecutionEvent.CommandEvent.Continue;
+import com.barracuda.engine.event.ExecutionEvent.CommandEvent.Reset;
+import com.barracuda.engine.event.ExecutionEvent.FlowEvent.FlowStartedEvent;
 import com.barracuda.engine.test.task.TaskEventsInOrderVerifier;
 import com.barracuda.engine.test.task.TestTask;
 import com.barracuda.engine.test.task.TestTaskVerifier;
@@ -9,6 +11,7 @@ import com.barracuda.engine.utility.AwaitilityUtils;
 import com.barracuda.engine.event.InMemoryEventCapturer;
 import com.barracuda.engine.flow.Flow;
 import com.barracuda.engine.flow.FlowState;
+import org.assertj.core.api.AbstractThrowableAssert;
 
 import java.time.Duration;
 import java.util.List;
@@ -42,10 +45,38 @@ public final class TestFlow {
         return eventCapturer.events();
     }
 
+    public TestFlow reset(){
+        flow.event(new Reset());
+        return this;
+    }
+
+    public TestFlow sendStartEvent(){
+        flow.event(new FlowStartedEvent(flow.id()));
+        return this;
+    }
+
     public TestFlow startFlow() {
-        flowTask = executorService.submit( () -> flow.event(new ContinueEvent()));
+        flowTask = executorService.submit( () -> flow.event(new Continue()));
         AwaitilityUtils.waitUntilFlowRunning(flow,Duration.ofSeconds(1));
         return this;
+    }
+
+    public TestFlow assertThrows(Consumer<TestFlow> consumer, Consumer<AbstractThrowableAssert<? extends AbstractThrowableAssert<?,?>,?>> assertionConsumer){
+        assertionConsumer.accept(assertThatThrownBy(() -> consumer.accept(this)));
+        return this;
+    }
+
+    /**
+     * Starts the flow. Ignores if the flow transitions to COMPLETED state because it's empty or the configured task completes faster than the
+     * code gets to see the RUNNING state of the flow.
+     * @return
+     */
+    public TestFlow startFlowIgnoreIfCompleted(){
+        try{
+            return startFlow();
+        }catch (AssertionError ex){
+            return expectFlowCompleted();
+        }
     }
 
     public TestFlow interruptFlowAndExpectFlowPaused() {
@@ -75,8 +106,8 @@ public final class TestFlow {
         return this;
     }
 
-    public TestFlow expectFlowInCreatedState(){
-        assertThat(flow.state()).isEqualTo(FlowState.CREATED);
+    public TestFlow expectFlowReady(){
+        assertThat(flow.state()).isEqualTo(FlowState.READY);
         return this;
     }
 

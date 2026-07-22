@@ -1,7 +1,7 @@
 package com.barracuda.engine.chain;
 
 import com.barracuda.engine.event.ExecutionEvent;
-import com.barracuda.engine.event.ExecutionEvent.ContinueEvent;
+import com.barracuda.engine.event.ExecutionEvent.CommandEvent.Continue;
 import com.barracuda.engine.event.ExecutionEvent.TaskEvent.TaskCompletedEvent;
 import com.barracuda.engine.event.ExecutionEvent.TaskEvent.TaskFailedEvent;
 import com.barracuda.engine.event.ExecutionEvent.TaskEvent.TaskPausedEvent;
@@ -47,7 +47,7 @@ public class TaskNode<I,R> implements ChainNode{
                 }
                 return;
             }
-            case ContinueEvent _ -> { }
+            case Continue _ -> { }
             default -> {
                 if(next != null){
                     next.event(event);
