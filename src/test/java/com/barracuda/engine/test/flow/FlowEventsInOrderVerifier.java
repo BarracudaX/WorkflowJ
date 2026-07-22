@@ -1,4 +1,4 @@
-package com.barracuda.engine.test;
+package com.barracuda.engine.test.flow;
 
 import com.barracuda.engine.event.ExecutionEvent.FlowEvent;
 import com.barracuda.engine.event.ExecutionEvent.FlowEvent.FlowCompletedEvent;

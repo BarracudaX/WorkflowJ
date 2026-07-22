@@ -10,7 +10,7 @@ import org.springframework.boot.test.system.OutputCaptureExtension;
 
 import java.time.Duration;
 
-import static com.barracuda.engine.test.TestFlowBuilder.testFlow;
+import static com.barracuda.engine.test.builder.TestFlowBuilder.testFlow;
 import static org.assertj.core.api.Assertions.*;
 
 

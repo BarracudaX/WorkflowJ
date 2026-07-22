@@ -1,4 +1,4 @@
-package com.barracuda.engine.test;
+package com.barracuda.engine.test.flow;
 
 import java.util.List;
 

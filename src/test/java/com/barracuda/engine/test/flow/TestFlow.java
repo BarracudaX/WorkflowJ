@@ -1,7 +1,10 @@
-package com.barracuda.engine.test;
+package com.barracuda.engine.test.flow;
 
 import com.barracuda.engine.event.ExecutionEvent;
 import com.barracuda.engine.event.ExecutionEvent.ContinueEvent;
+import com.barracuda.engine.test.task.TaskEventsInOrderVerifier;
+import com.barracuda.engine.test.task.TestTask;
+import com.barracuda.engine.test.task.TestTaskVerifier;
 import com.barracuda.engine.utility.AwaitilityUtils;
 import com.barracuda.engine.event.InMemoryEventCapturer;
 import com.barracuda.engine.flow.Flow;
@@ -22,7 +25,7 @@ public final class TestFlow {
 
     private final Flow flow;
     private final ExecutorService executorService;
-    private final Map<Class<?>, Map<String,TestTask<?>>> tasks;
+    private final Map<Class<?>, Map<String, TestTask<?>>> tasks;
     private final InMemoryEventCapturer eventCapturer;
     private Future<?> flowTask;
     private final Map<String,Long> subflows;

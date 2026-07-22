@@ -1,8 +1,8 @@
 package com.barracuda.engine.flow;
 
 import com.barracuda.engine.event.ExecutionEvent.ContinueEvent;
-import com.barracuda.engine.test.ParallelTestTask;
-import com.barracuda.engine.test.TestSubflow;
+import com.barracuda.engine.test.task.ParallelTestTask;
+import com.barracuda.engine.test.flow.TestSubflow;
 import com.barracuda.engine.utility.AwaitilityUtils;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
@@ -11,7 +11,7 @@ import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 
-import static com.barracuda.engine.test.TestFlowBuilder.testFlow;
+import static com.barracuda.engine.test.builder.TestFlowBuilder.testFlow;
 
 /**
  * Tests related to parallel tasks.

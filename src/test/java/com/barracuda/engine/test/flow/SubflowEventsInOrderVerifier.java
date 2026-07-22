@@ -1,4 +1,4 @@
-package com.barracuda.engine.test;
+package com.barracuda.engine.test.flow;
 
 import com.barracuda.engine.event.ExecutionEvent.SubflowEvent;
 import com.barracuda.engine.event.ExecutionEvent.SubflowEvent.SubflowCompletedEvent;

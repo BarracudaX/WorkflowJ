@@ -1,4 +1,4 @@
-package com.barracuda.engine.test;
+package com.barracuda.engine.test.task;
 
 import com.barracuda.engine.event.ExecutionEvent.TaskEvent;
 import com.barracuda.engine.event.ExecutionEvent.TaskEvent.TaskCompletedEvent;

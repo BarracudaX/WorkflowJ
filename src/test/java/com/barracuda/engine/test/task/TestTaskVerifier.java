@@ -1,4 +1,4 @@
-package com.barracuda.engine.test;
+package com.barracuda.engine.test.task;
 
 import com.barracuda.engine.utility.AwaitilityUtils;
 
@@ -10,7 +10,7 @@ public class TestTaskVerifier<T> {
 
     private final TestTask<T> testTask;
 
-    TestTaskVerifier(TestTask<T> testTask) {
+    public TestTaskVerifier(TestTask<T> testTask) {
         this.testTask = testTask;
     }
 

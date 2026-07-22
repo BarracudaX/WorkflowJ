@@ -1,9 +1,12 @@
-package com.barracuda.engine.test;
+package com.barracuda.engine.test.builder;
 
 import com.barracuda.engine.builder.RootFlowBuilder;
 import com.barracuda.engine.event.EvenPublisherImpl;
 import com.barracuda.engine.event.FlowEventPublisher;
 import com.barracuda.engine.event.InMemoryEventCapturer;
+import com.barracuda.engine.test.flow.TestFlow;
+import com.barracuda.engine.test.flow.TestSubflow;
+import com.barracuda.engine.test.task.TestTask;
 
 import java.util.*;
 import java.util.concurrent.ExecutorService;
@@ -20,7 +23,7 @@ public class TestFlowBuilder {
     private final InMemoryEventCapturer eventCapturer = new InMemoryEventCapturer();
     private final FlowEventPublisher evenPublisher = new EvenPublisherImpl();
     private final RootFlowBuilder rootFlowBuilder = new RootFlowBuilder(cpuExecutor, ioExecutor,evenPublisher).withID(1);
-    private final Map<Class<?>, Map<String,TestTask<?>>> testTasks = new LinkedHashMap<>();
+    private final Map<Class<?>, Map<String, TestTask<?>>> testTasks = new LinkedHashMap<>();
     private final Map<String,Long> subflowsMap = new LinkedHashMap<>();
     private long nextID = 2;
 

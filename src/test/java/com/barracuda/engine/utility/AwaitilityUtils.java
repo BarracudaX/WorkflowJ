@@ -2,8 +2,8 @@ package com.barracuda.engine.utility;
 
 import com.barracuda.engine.flow.Flow;
 import com.barracuda.engine.flow.FlowState;
-import com.barracuda.engine.test.TestTask;
-import com.barracuda.engine.test.TestTaskState;
+import com.barracuda.engine.test.task.TestTask;
+import com.barracuda.engine.test.task.TestTaskState;
 import org.awaitility.Awaitility;
 import org.awaitility.core.ConditionTimeoutException;
 

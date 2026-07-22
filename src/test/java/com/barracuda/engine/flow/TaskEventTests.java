@@ -2,7 +2,7 @@ package com.barracuda.engine.flow;
 
 import org.junit.jupiter.api.Test;
 
-import static com.barracuda.engine.test.TestFlowBuilder.testFlow;
+import static com.barracuda.engine.test.builder.TestFlowBuilder.testFlow;
 
 /**
  * Tests related to task evenets
