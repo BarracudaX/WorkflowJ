@@ -32,7 +32,7 @@ public class SubflowEventsInOrderVerifier {
         assertThat(nextEvent)
                 .withFailMessage("Expected SubflowStartedEvent, but was "+nextEvent+". All remaining events: "+remainingEvents)
                 .isInstanceOf(SubflowStartedEvent.class)
-                .satisfies(event -> assertThat(event.flowID()).isEqualTo(root.id()))
+                .satisfies(event -> assertThat(event.rootID()).isEqualTo(root.id()))
                 .satisfies(event -> assertThat(event.subflowID()).isEqualTo(subflowID));
         return this;
     }
@@ -43,7 +43,7 @@ public class SubflowEventsInOrderVerifier {
         assertThat(nextEvent)
                 .withFailMessage("Expected SubflowPausedEvent, but was "+nextEvent+". All remaining events: "+remainingEvents)
                 .isInstanceOf(SubflowPausedEvent.class)
-                .satisfies(event -> assertThat(event.flowID()).isEqualTo(root.id()))
+                .satisfies(event -> assertThat(event.rootID()).isEqualTo(root.id()))
                 .satisfies(event ->   assertThat(event.subflowID()).isEqualTo(subflowID));
 
         return this;
@@ -55,7 +55,7 @@ public class SubflowEventsInOrderVerifier {
         assertThat(nextEvent)
                 .withFailMessage("Expected SubflowFailedEvent, but was "+nextEvent+". All remaining events: "+remainingEvents)
                 .asInstanceOf(type(SubflowFailedEvent.class))
-                .satisfies(event -> assertThat(event.flowID()).isEqualTo(root.id()))
+                .satisfies(event -> assertThat(event.rootID()).isEqualTo(root.id()))
                 .satisfies(event -> assertThat(event.subflowID()).isEqualTo(subflowID))
                 .satisfies(event -> assertThat(event.exception()).isEqualTo(exception));
         return this;
@@ -67,7 +67,7 @@ public class SubflowEventsInOrderVerifier {
         assertThat(nextEvent)
                 .withFailMessage("Expected SubflowCompletedEvent, but was "+nextEvent+". All remaining events: "+remainingEvents)
                 .isInstanceOf(SubflowCompletedEvent.class)
-                .satisfies(event -> assertThat(event.flowID()).isEqualTo(root.id()))
+                .satisfies(event -> assertThat(event.rootID()).isEqualTo(root.id()))
                 .satisfies(event -> assertThat(event.subflowID()).isEqualTo(subflowID));
 
         return this;

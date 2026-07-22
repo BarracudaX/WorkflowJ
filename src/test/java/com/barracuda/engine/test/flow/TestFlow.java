@@ -43,7 +43,7 @@ public final class TestFlow {
     }
 
     public TestFlow startFlow() {
-        flowTask = executorService.submit( () -> flow.event(new ContinueEvent(flow.id())));
+        flowTask = executorService.submit( () -> flow.event(new ContinueEvent()));
         AwaitilityUtils.waitUntilFlowRunning(flow,Duration.ofSeconds(1));
         return this;
     }

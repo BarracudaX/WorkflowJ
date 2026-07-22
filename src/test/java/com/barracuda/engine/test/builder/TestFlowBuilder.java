@@ -22,7 +22,7 @@ public class TestFlowBuilder {
     private final ExecutorService ioExecutor = Executors.newVirtualThreadPerTaskExecutor();
     private final InMemoryEventCapturer eventCapturer = new InMemoryEventCapturer();
     private final FlowEventPublisher evenPublisher = new EvenPublisherImpl();
-    private final FlowBuilder flowBuilder = new FlowBuilder(cpuExecutor, ioExecutor,evenPublisher).withID(1);
+    private final FlowBuilder flowBuilder = new FlowBuilder(1L, cpuExecutor, ioExecutor,evenPublisher);
     private final Map<Class<?>, Map<String, TestTask<?>>> testTasks = new LinkedHashMap<>();
     private final Map<String,Long> subflowsMap = new LinkedHashMap<>();
     private long nextID = 2;
@@ -46,8 +46,7 @@ public class TestFlowBuilder {
         flowBuilder.parallel(parallel -> {
             for(TestSubflow testSubflow : testSubflows) {
                 var flowID = nextID++;
-                parallel.subflow(subflow -> {
-                    subflow.withID(flowID);
+                parallel.subflow(flowID,subflow -> {
                     for (String taskName : testSubflow.tasks()) {
                         var task = new TestTask<Void>(nextID++);
                         subflow.ioTask(task);

@@ -2,24 +2,24 @@ package com.barracuda.engine.event;
 
 public sealed interface ExecutionEvent {
 
-    long flowID();
-
-    record ContinueEvent(long flowID) implements ExecutionEvent{}
+    record ContinueEvent() implements ExecutionEvent{}
 
     sealed interface SubflowEvent extends ExecutionEvent{
+        long rootID();
 
         long subflowID();
 
-        record SubflowStartedEvent(long flowID,long subflowID) implements SubflowEvent{ }
+        record SubflowStartedEvent(long rootID, long subflowID) implements SubflowEvent{ }
 
-        record SubflowCompletedEvent(long flowID,long subflowID) implements SubflowEvent{ }
+        record SubflowCompletedEvent(long rootID, long subflowID) implements SubflowEvent{ }
 
-        record SubflowFailedEvent(long flowID,long subflowID,RuntimeException exception) implements SubflowEvent{ }
+        record SubflowFailedEvent(long rootID, long subflowID, RuntimeException exception) implements SubflowEvent{ }
 
-        record SubflowPausedEvent(long flowID,long subflowID) implements SubflowEvent{ }
+        record SubflowPausedEvent(long rootID, long subflowID) implements SubflowEvent{ }
     }
 
     sealed interface FlowEvent extends ExecutionEvent{
+        long flowID();
 
         record FlowStartEvent(long flowID) implements FlowEvent { }
 

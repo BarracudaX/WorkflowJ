@@ -26,12 +26,12 @@ public class FlowParallelTasksTest extends AbstractFlowTest{
         var flow = flowBuilder
                 .parallel(parallel ->
                         parallel
-                                .subflow(subflow -> subflow.ioTask(new ParallelTestTask(readinessLatch, barrierLatch, 1L)).withID(1L))
-                                .subflow(subflow -> subflow.ioTask(new ParallelTestTask(readinessLatch, barrierLatch, 2L)).withID(2L))
-                                .subflow(subflow -> subflow.ioTask(new ParallelTestTask(readinessLatch, barrierLatch, 3L)).withID(3L))
+                                .subflow(2L,subflow -> subflow.ioTask(new ParallelTestTask(readinessLatch, barrierLatch, 1L)))
+                                .subflow(3L,subflow -> subflow.ioTask(new ParallelTestTask(readinessLatch, barrierLatch, 2L)))
+                                .subflow(4L,subflow -> subflow.ioTask(new ParallelTestTask(readinessLatch, barrierLatch, 3L)))
                 ).build();
 
-        ioTaskExecutor.submit(() -> flow.event(new ContinueEvent(flow.id())));
+        ioTaskExecutor.submit(() -> flow.event(new ContinueEvent()));
 
         Awaitility.await().atMost(Duration.ofSeconds(1)).untilAsserted(readinessLatch::await);
 

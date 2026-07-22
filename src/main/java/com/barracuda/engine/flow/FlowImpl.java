@@ -19,14 +19,14 @@ public class FlowImpl implements Flow {
 
     private final ChainNode chainNode;
     private final AtomicReference<FlowState> state = new AtomicReference<>(FlowState.CREATED);
-    private final long id;
+    private final long flowID;
     private final FlowContext context;
     private final AtomicBoolean havePublishedStartEvent = new AtomicBoolean(false);
 
-    public FlowImpl(ChainNode chainNode, FlowContext context) {
+    public FlowImpl(ChainNode chainNode, FlowContext context,long flowID) {
         this.context = Objects.requireNonNull(context);
         this.chainNode = chainNode;
-        this.id = context.rootID();
+        this.flowID = flowID;
     }
 
     @Override
@@ -38,8 +38,7 @@ public class FlowImpl implements Flow {
         switch (event){
             case FlowStartEvent _ -> {
                 if(!havePublishedStartEvent.compareAndSet(false, true)) {
-                    //what other reasons could cause this?
-                    throw new ConcurrentModificationException("Flow potentially getting events from multiple threads.");
+                    throw new IllegalStateException("Flow potentially getting events from multiple threads or gets them in wrong order.");
                 }
             }
             case FlowCompletedEvent _ -> state.set(FlowState.COMPLETED); // already completed.
@@ -54,12 +53,12 @@ public class FlowImpl implements Flow {
                 }
 
                 if(havePublishedStartEvent.compareAndSet(false, true)) {
-                    context.flowEventPublisher().publish(new FlowStartEvent(id));
+                    context.flowEventPublisher().publish(new FlowStartEvent(flowID));
                 }
 
                 propagateEvent(event);
 
-                context.flowEventPublisher().publish(new FlowCompletedEvent(id));
+                context.flowEventPublisher().publish(new FlowCompletedEvent(flowID));
                 state.set(FlowState.COMPLETED);
             }
             default -> propagateEvent(event);
@@ -92,14 +91,14 @@ public class FlowImpl implements Flow {
         Thread.currentThread().interrupt();
         assert state.get() == FlowState.RUNNING;
         state.compareAndSet(FlowState.RUNNING, FlowState.PAUSED);
-        context.flowEventPublisher().publish(new FlowPausedEvent(id));
+        context.flowEventPublisher().publish(new FlowPausedEvent(flowID));
         throw ex;
     }
 
     private void failed(RuntimeException ex) {
         assert state.get() == FlowState.RUNNING;
         state.compareAndSet(FlowState.RUNNING, FlowState.FAILED);
-        context.flowEventPublisher().publish(new FlowFailedEvent(id,ex));
+        context.flowEventPublisher().publish(new FlowFailedEvent(flowID,ex));
 
         throw ex;
     }
@@ -111,6 +110,6 @@ public class FlowImpl implements Flow {
 
     @Override
     public long id() {
-        return id;
+        return flowID;
     }
 }

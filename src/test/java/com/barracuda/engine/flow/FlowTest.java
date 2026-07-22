@@ -26,7 +26,7 @@ public class FlowTest extends AbstractFlowTest{
                 .runnableTask(() -> System.out.println("3"), 3L)
                 .build();
 
-        ioTaskExecutor.submit(() -> flow.event(new ContinueEvent(flow.id())));
+        ioTaskExecutor.submit(() -> flow.event(new ContinueEvent()));
 
         AwaitilityUtils.waitUntilFlowCompleted(flow, Duration.ofSeconds(1));
 

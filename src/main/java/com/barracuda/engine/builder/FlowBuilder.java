@@ -13,16 +13,16 @@ import java.util.function.Function;
 public class FlowBuilder extends AbstractFlowBuilder<FlowBuilder> {
 
 
-    public FlowBuilder(ExecutorService cpuExecutor, ExecutorService ioExecutor, FlowEventPublisher flowEventPublisher) {
-        super(cpuExecutor, ioExecutor,flowEventPublisher,null);
+    public FlowBuilder(long flowID, ExecutorService cpuExecutor, ExecutorService ioExecutor, FlowEventPublisher flowEventPublisher) {
+        super(flowID, cpuExecutor, ioExecutor,flowEventPublisher, flowID);
     }
 
-    public FlowBuilder(ExecutorService cpuExecutor, ExecutorService ioExecutor) {
-        super(cpuExecutor, ioExecutor, new NoOpEvenPublisher(),null);
+    public FlowBuilder(long flowID, ExecutorService cpuExecutor, ExecutorService ioExecutor) {
+        super(flowID, cpuExecutor, ioExecutor, new NoOpEvenPublisher(), flowID);
     }
 
-    FlowBuilder(ExecutorService cpuExecutor, ExecutorService ioExecutor, FlowEventPublisher flowEventPublisher, long rootID) {
-        super(cpuExecutor, ioExecutor, flowEventPublisher,rootID);
+    FlowBuilder(long subflowID, ExecutorService cpuExecutor, ExecutorService ioExecutor, FlowEventPublisher flowEventPublisher, long rootID) {
+        super(subflowID, cpuExecutor, ioExecutor, flowEventPublisher, rootID);
     }
 
     public Flow build() {
@@ -32,9 +32,9 @@ public class FlowBuilder extends AbstractFlowBuilder<FlowBuilder> {
             current = node.apply(current);
         }
 
-        var context = new FlowContext(flowEventPublisher,id);
+        var context = new FlowContext(flowEventPublisher, flowID);
 
-        return new FlowImpl(current, context);
+        return new FlowImpl(current, context,flowID);
     }
 
     @Override

@@ -4,7 +4,6 @@ import com.barracuda.engine.chain.ChainNode;
 import com.barracuda.engine.chain.ParallelNode;
 import com.barracuda.engine.chain.TaskNode;
 import com.barracuda.engine.event.FlowEventPublisher;
-import com.barracuda.engine.event.SubflowEventPublisherDecorator;
 import com.barracuda.engine.flow.Flow;
 import com.barracuda.engine.flow.SubflowDecorator;
 import com.barracuda.engine.task.Task;
@@ -23,14 +22,15 @@ public abstract class AbstractFlowBuilder<T extends AbstractFlowBuilder<T>> {
     private final ExecutorService ioExecutor;
     protected final List<Function<ChainNode,ChainNode>> chainNodes = new ArrayList<>();
     protected FlowEventPublisher flowEventPublisher;
-    protected Long id = null;
-    private Long rootID;
+    protected final long flowID;
+    protected final Long rootID;
 
-    protected AbstractFlowBuilder(ExecutorService cpuExecutor, ExecutorService ioExecutor, FlowEventPublisher flowEventPublisher, Long rootID) {
+    protected AbstractFlowBuilder(long flowID, ExecutorService cpuExecutor, ExecutorService ioExecutor, FlowEventPublisher flowEventPublisher, Long rootID) {
         this.cpuExecutor = cpuExecutor;
         this.ioExecutor = ioExecutor;
         this.flowEventPublisher = flowEventPublisher;
         this.rootID = rootID;
+        this.flowID = flowID;
     }
 
     public T parallel(Consumer<SubflowBuilder> consumer) {
@@ -40,17 +40,10 @@ public abstract class AbstractFlowBuilder<T extends AbstractFlowBuilder<T>> {
         consumer.accept(builder);
 
         List<Flow> subflows = builder.subflows.stream()
-                .map(subflowBuilder -> subflowBuilder.withFlowEventPublisher(new SubflowEventPublisherDecorator(subflowBuilder.id,rootID,flowEventPublisher)))
                 .map(FlowBuilder::build).map(flow -> (Flow) new SubflowDecorator(flow))
                 .toList();
 
         chainNodes.add((next) -> new ParallelNode(subflows,next));
-
-        return self();
-    }
-
-    T withFlowEventPublisher(FlowEventPublisher flowEventPublisher) {
-        this.flowEventPublisher = flowEventPublisher;
 
         return self();
     }
@@ -75,12 +68,6 @@ public abstract class AbstractFlowBuilder<T extends AbstractFlowBuilder<T>> {
 
     public <I,R> T ioTask(Task<I,R> task, Supplier<I> supplier){
         return ioTask(task,supplier,noopConsumer());
-    }
-
-    public T withID(long id){
-        this.id = id;
-        this.rootID = id;
-        return self();
     }
 
     /**

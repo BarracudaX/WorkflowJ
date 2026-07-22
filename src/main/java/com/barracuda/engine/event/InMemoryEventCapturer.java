@@ -36,7 +36,7 @@ public class InMemoryEventCapturer implements FlowEventListener {
         List<SubflowEvent> subflowEvents = new ArrayList<>();
 
         for(var event : events()){
-            if(event instanceof SubflowEvent subflowEvent && subflowEvent.flowID() == rootFlowID && subflowEvent.subflowID() == subflowID) {
+            if(event instanceof SubflowEvent subflowEvent && subflowEvent.rootID() == rootFlowID && subflowEvent.subflowID() == subflowID) {
                 subflowEvents.add(subflowEvent);
             }
         }

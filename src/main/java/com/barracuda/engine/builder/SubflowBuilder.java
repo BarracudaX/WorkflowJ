@@ -1,6 +1,7 @@
 package com.barracuda.engine.builder;
 
 import com.barracuda.engine.event.FlowEventPublisher;
+import com.barracuda.engine.event.SubflowEventPublisherDecorator;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -22,8 +23,8 @@ public class SubflowBuilder {
         this.rootID = rootID;
     }
 
-    public SubflowBuilder subflow(Consumer<AbstractFlowBuilder<?>> flowBuilderConsumer) {
-        var builder = new FlowBuilder(cpuExecutor, ioExecutor,flowEventPublisher,rootID);
+    public SubflowBuilder subflow(long subflowID,Consumer<AbstractFlowBuilder<?>> flowBuilderConsumer) {
+        var builder = new FlowBuilder(subflowID, cpuExecutor, ioExecutor,new SubflowEventPublisherDecorator(subflowID,rootID,flowEventPublisher),rootID);
         flowBuilderConsumer.accept(builder);
 
         subflows.add(builder);

@@ -9,6 +9,6 @@ public abstract class AbstractFlowTest {
 
     protected final ExecutorService cpuTaskExecutor = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
     protected final ExecutorService ioTaskExecutor = Executors.newVirtualThreadPerTaskExecutor();
-    protected final FlowBuilder flowBuilder = new FlowBuilder(cpuTaskExecutor, ioTaskExecutor).withID(1L);
+    protected final FlowBuilder flowBuilder = new FlowBuilder(1L, cpuTaskExecutor, ioTaskExecutor);
 
 }
