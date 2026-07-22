@@ -20,7 +20,7 @@ public class FlowTest extends AbstractFlowTest{
 
     @Test
     void shouldExecuteTasksInSpecifiedOrder(CapturedOutput output) {
-        Flow flow = rootFlowBuilder
+        Flow flow = flowBuilder
                 .runnableTask(() -> System.out.println("1"), 1L)
                 .runnableTask(() -> System.out.println("2"), 2L)
                 .runnableTask(() -> System.out.println("3"), 3L)
@@ -35,7 +35,7 @@ public class FlowTest extends AbstractFlowTest{
 
     @Test
     void shouldAllowCreationOfEmptyFlow() {
-        assertThatCode(rootFlowBuilder::build).doesNotThrowAnyException();
+        assertThatCode(flowBuilder::build).doesNotThrowAnyException();
     }
 
     @Test

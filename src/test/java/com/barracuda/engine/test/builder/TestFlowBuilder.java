@@ -1,6 +1,6 @@
 package com.barracuda.engine.test.builder;
 
-import com.barracuda.engine.builder.RootFlowBuilder;
+import com.barracuda.engine.builder.FlowBuilder;
 import com.barracuda.engine.event.EvenPublisherImpl;
 import com.barracuda.engine.event.FlowEventPublisher;
 import com.barracuda.engine.event.InMemoryEventCapturer;
@@ -22,7 +22,7 @@ public class TestFlowBuilder {
     private final ExecutorService ioExecutor = Executors.newVirtualThreadPerTaskExecutor();
     private final InMemoryEventCapturer eventCapturer = new InMemoryEventCapturer();
     private final FlowEventPublisher evenPublisher = new EvenPublisherImpl();
-    private final RootFlowBuilder rootFlowBuilder = new RootFlowBuilder(cpuExecutor, ioExecutor,evenPublisher).withID(1);
+    private final FlowBuilder flowBuilder = new FlowBuilder(cpuExecutor, ioExecutor,evenPublisher).withID(1);
     private final Map<Class<?>, Map<String, TestTask<?>>> testTasks = new LinkedHashMap<>();
     private final Map<String,Long> subflowsMap = new LinkedHashMap<>();
     private long nextID = 2;
@@ -38,12 +38,12 @@ public class TestFlowBuilder {
         if (testTasks.get(clazz).put(taskName, task) != null) {
             throw new IllegalArgumentException("Duplicate task name: " + taskName);
         }
-        rootFlowBuilder.ioTask(task,dataSupplier);
+        flowBuilder.ioTask(task,dataSupplier);
         return this;
     }
 
     public TestFlowBuilder subflows(TestSubflow... testSubflows) {
-        rootFlowBuilder.parallel(parallel -> {
+        flowBuilder.parallel(parallel -> {
             for(TestSubflow testSubflow : testSubflows) {
                 var flowID = nextID++;
                 parallel.subflow(subflow -> {
@@ -65,7 +65,7 @@ public class TestFlowBuilder {
     public TestFlowBuilder task(String taskName) {
         TestTask<Void> task = new TestTask<>(nextID++);
         putTask(taskName,task);
-        rootFlowBuilder.ioTask(task);
+        flowBuilder.ioTask(task);
 
         return this;
     }
@@ -75,7 +75,7 @@ public class TestFlowBuilder {
 
         putTask(taskName,task);
 
-        rootFlowBuilder.cpuTask(task);
+        flowBuilder.cpuTask(task);
 
         return this;
     }
@@ -87,7 +87,7 @@ public class TestFlowBuilder {
     }
 
     public TestFlow build() {
-        return new TestFlow(rootFlowBuilder.build(), ioExecutor, testTasks ,eventCapturer, subflowsMap);
+        return new TestFlow(flowBuilder.build(), ioExecutor, testTasks ,eventCapturer, subflowsMap);
     }
 
     public static TestFlowBuilder testFlow() {

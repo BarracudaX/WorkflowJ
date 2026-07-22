@@ -23,7 +23,7 @@ public class FlowParallelTasksTest extends AbstractFlowTest{
         var readinessLatch = new CountDownLatch(3);
         var barrierLatch = new CountDownLatch(1);
 
-        var flow = rootFlowBuilder
+        var flow = flowBuilder
                 .parallel(parallel ->
                         parallel
                                 .subflow(subflow -> subflow.ioTask(new ParallelTestTask(readinessLatch, barrierLatch, 1L)).withID(1L))
