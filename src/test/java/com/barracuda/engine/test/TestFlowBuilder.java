@@ -10,8 +10,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.Supplier;
 
-import static com.barracuda.engine.utility.TestUtils.randomID;
-
 /**
  * Note that tasks are stored in LinkedHashMap for easier testing: tasks are printed in the order in which they were configured by the test.
  */
@@ -21,9 +19,10 @@ public class TestFlowBuilder {
     private final ExecutorService ioExecutor = Executors.newVirtualThreadPerTaskExecutor();
     private final InMemoryEventCapturer eventCapturer = new InMemoryEventCapturer();
     private final FlowEventPublisher evenPublisher = new EvenPublisherImpl();
-    private final RootFlowBuilder rootFlowBuilder = new RootFlowBuilder(cpuExecutor, ioExecutor,evenPublisher).withID(randomID());
+    private final RootFlowBuilder rootFlowBuilder = new RootFlowBuilder(cpuExecutor, ioExecutor,evenPublisher).withID(1);
     private final Map<Class<?>, Map<String,TestTask<?>>> testTasks = new LinkedHashMap<>();
     private final Map<String,Long> subflowsMap = new LinkedHashMap<>();
+    private long nextID = 2;
 
     private TestFlowBuilder() {
         evenPublisher.subscribe(eventCapturer);
@@ -32,7 +31,7 @@ public class TestFlowBuilder {
 
     public <T> TestFlowBuilder consumerTask(String taskName, Class<T> clazz, Supplier<T> dataSupplier) {
         testTasks.putIfAbsent(clazz, new LinkedHashMap<>());
-        TestTask<T> task = new TestTask<>(randomID());
+        TestTask<T> task = new TestTask<>(nextID++);
         if (testTasks.get(clazz).put(taskName, task) != null) {
             throw new IllegalArgumentException("Duplicate task name: " + taskName);
         }
@@ -43,11 +42,11 @@ public class TestFlowBuilder {
     public TestFlowBuilder subflows(TestSubflow... testSubflows) {
         rootFlowBuilder.parallel(parallel -> {
             for(TestSubflow testSubflow : testSubflows) {
-                var flowID = randomID();
+                var flowID = nextID++;
                 parallel.subflow(subflow -> {
                     subflow.withID(flowID);
                     for (String taskName : testSubflow.tasks()) {
-                        var task = new TestTask<Void>(randomID());
+                        var task = new TestTask<Void>(nextID++);
                         subflow.ioTask(task);
                         putTask(taskName, task);
                     }
@@ -61,7 +60,7 @@ public class TestFlowBuilder {
     }
 
     public TestFlowBuilder task(String taskName) {
-        TestTask<Void> task = new TestTask<>(randomID());
+        TestTask<Void> task = new TestTask<>(nextID++);
         putTask(taskName,task);
         rootFlowBuilder.ioTask(task);
 
@@ -69,7 +68,7 @@ public class TestFlowBuilder {
     }
 
     public TestFlowBuilder cpuTask(String taskName) {
-        TestTask<Void> task = new TestTask<>(randomID());
+        TestTask<Void> task = new TestTask<>(nextID++);
 
         putTask(taskName,task);
 
