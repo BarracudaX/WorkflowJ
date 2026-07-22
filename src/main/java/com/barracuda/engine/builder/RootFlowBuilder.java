@@ -14,11 +14,15 @@ public class RootFlowBuilder extends FlowBuilder<RootFlowBuilder> {
 
 
     public RootFlowBuilder(ExecutorService cpuExecutor, ExecutorService ioExecutor, FlowEventPublisher flowEventPublisher) {
-        super(cpuExecutor, ioExecutor,flowEventPublisher);
+        super(cpuExecutor, ioExecutor,flowEventPublisher,null);
     }
 
     public RootFlowBuilder(ExecutorService cpuExecutor, ExecutorService ioExecutor) {
-        super(cpuExecutor, ioExecutor, new NoOpEvenPublisher());
+        super(cpuExecutor, ioExecutor, new NoOpEvenPublisher(),null);
+    }
+
+    RootFlowBuilder(ExecutorService cpuExecutor, ExecutorService ioExecutor, FlowEventPublisher flowEventPublisher, long rootID) {
+        super(cpuExecutor, ioExecutor, flowEventPublisher,rootID);
     }
 
     public Flow build() {

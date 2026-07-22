@@ -1,13 +1,14 @@
 package com.barracuda.engine.flow;
 
-import com.barracuda.engine.event.ExecutionEvent;
 import com.barracuda.engine.event.ExecutionEvent.ContinueEvent;
 import com.barracuda.engine.test.ParallelTestTask;
+import com.barracuda.engine.test.TestSubflow;
 import com.barracuda.engine.utility.AwaitilityUtils;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 
 import java.time.Duration;
+import java.util.List;
 import java.util.concurrent.CountDownLatch;
 
 import static com.barracuda.engine.test.TestFlowBuilder.testFlow;
@@ -36,14 +37,14 @@ public class FlowParallelTasksTest extends AbstractFlowTest{
 
         barrierLatch.countDown();
 
-        AwaitilityUtils.waitUntilFlowCompleted(flow);
+        AwaitilityUtils.waitUntilFlowCompleted(flow, Duration.ofSeconds(1));
     }
 
     @Test
     void flowShouldHaveFailedStateIfParallelSubflowFailsWithException() {
         var exception = new RuntimeException("FAILED");
         testFlow()
-                .parallel("ParallelFailTask","ParallelTask2","ParallelTask3")
+                .subflows(new TestSubflow( "Subflow1", List.of("ParallelFailTask")),new TestSubflow( "Subflow2", List.of("ParallelTask2")),new TestSubflow( "Subflow3", List.of("ParallelTask3")))
                 .build()
                 .startFlow()
                 .assertTaskRunning("ParallelFailTask")
@@ -54,12 +55,15 @@ public class FlowParallelTasksTest extends AbstractFlowTest{
     }
 
     @Test
-    void shouldCancelParallelSubflowsIfOneOfThemFails() {
+    void shouldCancelParallelTasksOfASubflowIfOneOfThemFails() {
         testFlow()
-                .parallel("ParallelFailTask","ParallelTask2","ParallelTask3")
+                .subflows(new TestSubflow( "Subflow1", List.of("ParallelTask1")),new TestSubflow( "Subflow2", List.of("ParallelTask2")),new TestSubflow( "Subflow3", List.of("ParallelTask3")))
                 .build()
                 .startFlow()
-                .failTask("ParallelFailTask",new RuntimeException("FAILED"))
+                .assertTaskRunning("ParallelTask1")
+                .assertTaskRunning("ParallelTask2")
+                .assertTaskRunning("ParallelTask3")
+                .failTask("ParallelTask1",new RuntimeException("FAILED"))
                 .assertTaskCancelled("ParallelTask2")
                 .assertTaskCancelled("ParallelTask3");
 
@@ -68,7 +72,7 @@ public class FlowParallelTasksTest extends AbstractFlowTest{
     @Test
     void shouldNotRunNextTaskWhenParallelSubflowFails() {
         testFlow()
-                .parallel("ParallelTask1")
+                .subflows(new TestSubflow( "Subflow1", List.of("ParallelTask1")))
                 .task("NextTask")
                 .build()
                 .startFlow()
@@ -80,7 +84,8 @@ public class FlowParallelTasksTest extends AbstractFlowTest{
     @Test
     void shouldExecuteTheNextTaskWhenParallelSubflowsComplete() {
         testFlow()
-                .parallel("ParallelTask1","ParallelTask2")
+                .subflows(new TestSubflow( "Subflow1", List.of("ParallelTask1")))
+                .subflows(new TestSubflow( "Subflow2", List.of("ParallelTask2")))
                 .task("NextTask")
                 .build()
                 .startFlow()

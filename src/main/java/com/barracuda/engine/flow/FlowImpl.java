@@ -26,7 +26,7 @@ public class FlowImpl implements Flow {
     public FlowImpl(ChainNode chainNode, FlowContext context) {
         this.context = Objects.requireNonNull(context);
         this.chainNode = chainNode;
-        this.id = context.flowID();
+        this.id = context.rootID();
     }
 
     @Override

@@ -6,6 +6,19 @@ public sealed interface ExecutionEvent {
 
     record ContinueEvent(long flowID) implements ExecutionEvent{}
 
+    sealed interface SubflowEvent extends ExecutionEvent{
+
+        long subflowID();
+
+        record SubflowStartedEvent(long flowID,long subflowID) implements SubflowEvent{ }
+
+        record SubflowCompletedEvent(long flowID,long subflowID) implements SubflowEvent{ }
+
+        record SubflowFailedEvent(long flowID,long subflowID,RuntimeException exception) implements SubflowEvent{ }
+
+        record SubflowPausedEvent(long flowID,long subflowID) implements SubflowEvent{ }
+    }
+
     sealed interface FlowEvent extends ExecutionEvent{
 
         record FlowStartEvent(long flowID) implements FlowEvent { }

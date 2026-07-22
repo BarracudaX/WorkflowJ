@@ -23,6 +23,7 @@ public class TestFlowBuilder {
     private final FlowEventPublisher evenPublisher = new EvenPublisherImpl();
     private final RootFlowBuilder rootFlowBuilder = new RootFlowBuilder(cpuExecutor, ioExecutor,evenPublisher).withID(randomID());
     private final Map<Class<?>, Map<String,TestTask<?>>> testTasks = new LinkedHashMap<>();
+    private final Map<String,Long> subflowsMap = new LinkedHashMap<>();
 
     private TestFlowBuilder() {
         evenPublisher.subscribe(eventCapturer);
@@ -39,21 +40,23 @@ public class TestFlowBuilder {
         return this;
     }
 
-    /**
-     * Creates parallel flows each with a single test task.
-     */
-    public TestFlowBuilder parallel(String... parallelTaskNames) {
-
+    public TestFlowBuilder subflows(TestSubflow... testSubflows) {
         rootFlowBuilder.parallel(parallel -> {
-            for (String name : parallelTaskNames) {
-                parallel.subflow(flow -> {
-                    var task = new TestTask<Void>(randomID());
-                    putTask(name,task);
-                    flow.withID(randomID()).ioTask(task);
+            for(TestSubflow testSubflow : testSubflows) {
+                var flowID = randomID();
+                parallel.subflow(subflow -> {
+                    subflow.withID(flowID);
+                    for (String taskName : testSubflow.tasks()) {
+                        var task = new TestTask<Void>(randomID());
+                        subflow.ioTask(task);
+                        putTask(taskName, task);
+                    }
+                    if(subflowsMap.put(testSubflow.name(),flowID) != null){
+                        throw new IllegalArgumentException("Duplicate subflow name: " + testSubflow.name());
+                    }
                 });
             }
         });
-
         return this;
     }
 
@@ -82,7 +85,7 @@ public class TestFlowBuilder {
     }
 
     public TestFlow build() {
-        return new TestFlow(rootFlowBuilder.build(), ioExecutor, testTasks ,eventCapturer);
+        return new TestFlow(rootFlowBuilder.build(), ioExecutor, testTasks ,eventCapturer, subflowsMap);
     }
 
     public static TestFlowBuilder testFlow() {

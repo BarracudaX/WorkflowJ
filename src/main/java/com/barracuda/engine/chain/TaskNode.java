@@ -58,7 +58,7 @@ public class TaskNode<I,R> implements ChainNode{
 
         //should get to this point only if the event was the ContinueEvent.
 
-        var flowID = FLOW_CONTEXT.get().flowID();
+        var flowID = FLOW_CONTEXT.get().rootID();
         var eventPublisher = FLOW_CONTEXT.get().flowEventPublisher();
 
         eventPublisher.publish(new TaskStartEvent(flowID,task.id()));

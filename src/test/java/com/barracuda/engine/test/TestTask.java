@@ -2,6 +2,7 @@ package com.barracuda.engine.test;
 
 import com.barracuda.engine.task.Task;
 
+import java.time.Duration;
 import java.util.Objects;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicReference;
@@ -78,15 +79,15 @@ public class TestTask<I> implements Task<I, Void> {
         return this;
     }
 
-    public void waitUntilRunning(){ waitUntilTestTaskIsRunning(this);}
+    public void waitUntilRunning(Duration duration){ waitUntilTestTaskIsRunning(this, duration);}
 
-    public void waitUntilCompleted() {
-        waitUntilTestTaskCompleted(this);
+    public void waitUntilCompleted(Duration duration) {
+        waitUntilTestTaskCompleted(this, duration);
     }
 
-    public void waitUntilFailed() { waitUntilTestTaskFailed(this);}
+    public void waitUntilFailed(Duration duration) { waitUntilTestTaskFailed(this, duration);}
 
-    public void waitUntilPaused() { waitUntilTestTaskInterrupted(this); }
+    public void waitUntilPaused(Duration duration) { waitUntilTestTaskInterrupted(this, duration); }
 
     public TestTaskState state() {
         return state.get();

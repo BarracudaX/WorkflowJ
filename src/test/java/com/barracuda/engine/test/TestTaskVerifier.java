@@ -2,6 +2,8 @@ package com.barracuda.engine.test;
 
 import com.barracuda.engine.utility.AwaitilityUtils;
 
+import java.time.Duration;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class TestTaskVerifier<T> {
@@ -33,12 +35,12 @@ public class TestTaskVerifier<T> {
     }
 
     public TestTaskVerifier<T> isRunning() {
-        AwaitilityUtils.waitUntilTestTaskIsRunning(testTask);
+        AwaitilityUtils.waitUntilTestTaskIsRunning(testTask, Duration.ofSeconds(1));
         return this;
     }
 
     public TestTaskVerifier<T> wasCancelled(){
-        AwaitilityUtils.waitUntilTestTaskInterrupted(testTask);
+        AwaitilityUtils.waitUntilTestTaskInterrupted(testTask, Duration.ofSeconds(1));
         return this;
     }
 }

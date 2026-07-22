@@ -7,6 +7,8 @@ import com.barracuda.engine.event.InMemoryEventCapturer;
 import com.barracuda.engine.flow.Flow;
 import com.barracuda.engine.flow.FlowState;
 
+import java.time.Duration;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ExecutorService;
@@ -23,38 +25,50 @@ public final class TestFlow {
     private final Map<Class<?>, Map<String,TestTask<?>>> tasks;
     private final InMemoryEventCapturer eventCapturer;
     private Future<?> flowTask;
+    private final Map<String,Long> subflows;
 
-    public TestFlow(Flow flow, ExecutorService executorService, Map<Class<?>, Map<String,TestTask<?>>> tasks, InMemoryEventCapturer eventCapturer) {
+    public TestFlow(Flow flow, ExecutorService executorService, Map<Class<?>, Map<String,TestTask<?>>> tasks, InMemoryEventCapturer eventCapturer,Map<String,Long> subflows) {
         this.flow = flow;
         this.executorService = executorService;
         this.eventCapturer = eventCapturer;
         this.tasks = tasks;
+        this.subflows = subflows;
+    }
+
+    public List<ExecutionEvent> events(){
+        return eventCapturer.events();
     }
 
     public TestFlow startFlow() {
         flowTask = executorService.submit( () -> flow.event(new ContinueEvent(flow.id())));
-        AwaitilityUtils.waitUntilFlowRunning(flow);
+        AwaitilityUtils.waitUntilFlowRunning(flow,Duration.ofSeconds(1));
         return this;
     }
 
     public TestFlow interruptFlowAndExpectFlowPaused() {
         flowTask.cancel(true);
-        AwaitilityUtils.waitUntilFlowPaused(flow);
+        AwaitilityUtils.waitUntilFlowPaused(flow,Duration.ofSeconds(1));
+        return this;
+    }
+
+    public TestFlow interruptFlowAndExpectFlowPaused(Duration duration) {
+        flowTask.cancel(true);
+        AwaitilityUtils.waitUntilFlowPaused(flow,duration);
         return this;
     }
 
     public TestFlow failTask(String taskName, RuntimeException exception) {
-        getTestTaskByName(taskName).failNow(exception).waitUntilFailed();
+        getTestTaskByName(taskName).failNow(exception).waitUntilFailed(Duration.ofSeconds(1));
         return this;
     }
 
     public TestFlow finishTask(String taskName) {
-        getTestTaskByName(taskName).finish().waitUntilCompleted();
+        getTestTaskByName(taskName).finish().waitUntilCompleted(Duration.ofSeconds(1));
         return this;
     }
 
     public TestFlow expectIsRunning(){
-        AwaitilityUtils.waitUntilFlowRunning(flow);
+        AwaitilityUtils.waitUntilFlowRunning(flow,Duration.ofSeconds(1));
         return this;
     }
 
@@ -63,23 +77,18 @@ public final class TestFlow {
         return this;
     }
 
-    public TestFlow expectFlowPaused() {
-        AwaitilityUtils.waitUntilFlowPaused(flow);
-        return this;
-    }
-
     public TestFlow expectFlowCompleted() {
-        AwaitilityUtils.waitUntilFlowCompleted(flow);
+        AwaitilityUtils.waitUntilFlowCompleted(flow,Duration.ofSeconds(1));
         return this;
     }
 
     public TestFlow expectFlowFailed() {
-        AwaitilityUtils.waitUntilFlowFailed(flow);
+        AwaitilityUtils.waitUntilFlowFailed(flow,Duration.ofSeconds(1));
         return this;
     }
 
     public TestFlow expectFlowFailed(RuntimeException exception) {
-        AwaitilityUtils.waitUntilFlowFailed(flow);
+        AwaitilityUtils.waitUntilFlowFailed(flow,Duration.ofSeconds(1));
         assertThatThrownBy(() -> flowTask.get()).hasCause(exception);
         return this;
     }
@@ -117,6 +126,12 @@ public final class TestFlow {
 
     public TestFlow assertFlowEventsInOrder(Consumer<FlowEventsInOrderVerifier> consumer) {
         consumer.accept(new FlowEventsInOrderVerifier(flow, eventCapturer.flowEvents(flow.id())));
+        return this;
+    }
+
+    public TestFlow assertSubflowEventsInOrder(String subflow, Consumer<SubflowEventsInOrderVerifier> consumer) {
+        long subflowID = Objects.requireNonNull(subflows.get(subflow), "Subflow with name " + subflow + " not found. Configured subflows: " + subflows.keySet());
+        consumer.accept(new SubflowEventsInOrderVerifier(flow,eventCapturer.subflowEvents(flow.id(),subflowID),subflowID));
         return this;
     }
 

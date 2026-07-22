@@ -13,15 +13,17 @@ public class ParallelChainNodeBuilder {
     private final ExecutorService ioExecutor;
     final List<RootFlowBuilder> subflows = new ArrayList<>();
     private final FlowEventPublisher  flowEventPublisher;
+    private final long rootID;
 
-    public ParallelChainNodeBuilder(ExecutorService cpuExecutor, ExecutorService ioExecutor, FlowEventPublisher flowEventPublisher) {
+    ParallelChainNodeBuilder(ExecutorService cpuExecutor, ExecutorService ioExecutor, FlowEventPublisher flowEventPublisher, long rootID) {
         this.cpuExecutor = cpuExecutor;
         this.ioExecutor = ioExecutor;
         this.flowEventPublisher = flowEventPublisher;
+        this.rootID = rootID;
     }
 
     public ParallelChainNodeBuilder subflow(Consumer<FlowBuilder<?>> flowBuilderConsumer) {
-        var builder = new RootFlowBuilder(cpuExecutor, ioExecutor,flowEventPublisher);
+        var builder = new RootFlowBuilder(cpuExecutor, ioExecutor,flowEventPublisher,rootID);
         flowBuilderConsumer.accept(builder);
 
         subflows.add(builder);

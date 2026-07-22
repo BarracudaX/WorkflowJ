@@ -30,14 +30,17 @@ public class FlowEventsInOrderVerifier {
         var remainingEvents = List.copyOf(events);
         FlowEvent nextEvent = getNextEvent();
         assertThat(nextEvent)
-                .withFailMessage("Expected Flow Started Event, but was "+nextEvent+". All remaining events: "+remainingEvents)
+                .withFailMessage("Expected FlowStartedEvent, but was "+nextEvent+". All remaining events: "+remainingEvents)
                 .isInstanceOf(FlowStartEvent.class)
                 .satisfies(event -> assertThat(event.flowID()).isEqualTo(flow.id()));
         return this;
     }
 
     public FlowEventsInOrderVerifier hasFlowPausedEvent() {
-        assertThat(getNextEvent())
+        var remainingEvents = List.copyOf(events);
+        FlowEvent nextEvent = getNextEvent();
+        assertThat(nextEvent)
+                .withFailMessage("Expected FlowPausedEvent, but was "+nextEvent+". All remaining events: "+remainingEvents)
                 .asInstanceOf(type(FlowEvent.FlowPausedEvent.class))
                 .satisfies(event -> assertThat(event.flowID()).isEqualTo(flow.id()));
 
@@ -45,7 +48,10 @@ public class FlowEventsInOrderVerifier {
     }
 
     public FlowEventsInOrderVerifier hasFlowFailedEvent(RuntimeException exception) {
-        assertThat(getNextEvent())
+        var remainingEvents = List.copyOf(events);
+        FlowEvent nextEvent = getNextEvent();
+        assertThat(nextEvent)
+                .withFailMessage("Expected FlowFailedEvent, but was "+nextEvent+". All remaining events: "+remainingEvents)
                 .asInstanceOf(InstanceOfAssertFactories.type(FlowEvent.FlowFailedEvent.class))
                 .satisfies(event -> assertThat(event.flowID()).isEqualTo(flow.id()))
                 .satisfies(event -> assertThat(event.exception()).isEqualTo(exception));
@@ -53,7 +59,10 @@ public class FlowEventsInOrderVerifier {
     }
 
     public FlowEventsInOrderVerifier hasFlowCompletedEvent() {
-        assertThat(getNextEvent())
+        var remainingEvents = List.copyOf(events);
+        FlowEvent nextEvent = getNextEvent();
+        assertThat(nextEvent)
+                .withFailMessage("Expected FlowCompletedEvent, but was "+nextEvent+". All remaining events: "+remainingEvents)
                 .isInstanceOf(FlowCompletedEvent.class)
                 .satisfies(event -> assertThat(event.flowID()).isEqualTo(flow.id()));
 

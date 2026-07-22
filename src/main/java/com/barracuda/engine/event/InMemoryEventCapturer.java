@@ -24,12 +24,24 @@ public class InMemoryEventCapturer implements FlowEventListener {
         List<FlowEvent> flowEvents = new ArrayList<>();
 
         for(var event : events()){
-            if (Objects.requireNonNull(event) instanceof FlowEvent flowEvent && flowEvent.flowID() == flowID) {
+            if (event instanceof FlowEvent flowEvent && flowEvent.flowID() == flowID) {
                 flowEvents.add(flowEvent);
             }
         }
 
         return flowEvents;
+    }
+
+    public List<SubflowEvent> subflowEvents(long rootFlowID, long subflowID) {
+        List<SubflowEvent> subflowEvents = new ArrayList<>();
+
+        for(var event : events()){
+            if(event instanceof SubflowEvent subflowEvent && subflowEvent.flowID() == rootFlowID && subflowEvent.subflowID() == subflowID) {
+                subflowEvents.add(subflowEvent);
+            }
+        }
+
+        return subflowEvents;
     }
 
     public List<TaskEvent> taskEvents(long taskID) {
