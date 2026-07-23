@@ -12,17 +12,18 @@ import com.barracuda.engine.event.ExecutionEvent.FlowEvent.FlowStartedEvent;
 
 import java.util.Objects;
 import java.util.concurrent.StructuredTaskScope;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
 
+/**
+ *
+ * Flow instances aren't thread safe and aren't supposed to be shared between used. The thread safety of a flow is achieved through thread confinement. Despite that, the class guarantees visibility of changes.
+ */
 public class FlowImpl implements Flow {
 
-
     private final ChainNode chainNode;
-    private final AtomicReference<FlowState> state = new AtomicReference<>(FlowState.READY);
+    private volatile FlowState state = FlowState.READY;
     private final long flowID;
     private final FlowContext context;
-    private final AtomicBoolean havePublishedStartEvent = new AtomicBoolean(false);
+    private volatile boolean startedEventPublished = false;
 
     public FlowImpl(ChainNode chainNode, FlowContext context,long flowID) {
         this.context = Objects.requireNonNull(context);
@@ -32,18 +33,26 @@ public class FlowImpl implements Flow {
 
     @Override
     public void event(ExecutionEvent event) {
+        if (state == FlowState.FAILED || state == FlowState.COMPLETED || state == FlowState.RUNNING) {
+            throw new IllegalStateException("Flow cannot accept events due to its state: "+state+".");
+        }
+
         switch (event){
             case FlowStartedEvent _ -> {
-                if(!havePublishedStartEvent.compareAndSet(false, true)) {
-                    throw new IllegalStateException("Flow potentially getting events from multiple threads");
+                if(startedEventPublished) {
+                    throw new IllegalStateException("Duplicate flow started event.");
+                }
+                startedEventPublished = true;
+                if (state != FlowState.READY) {
+                    throw new IllegalStateException("Flow cannot be started because of it's current state being "+state);
                 }
             }
-            case FlowCompletedEvent _ -> state.set(FlowState.COMPLETED); // already completed.
+            case FlowCompletedEvent _ -> state = FlowState.COMPLETED; // already completed.
             case FlowFailedEvent ev -> {
-                state.set(FlowState.FAILED);
+                state = FlowState.FAILED;
                 throw ev.exception();
             }
-            case FlowPausedEvent _ -> state.set(FlowState.PAUSED);
+            case FlowPausedEvent _ -> state = FlowState.PAUSED;
             case CommandEvent command -> handleCommand(command);
             default -> propagateEvent(event);
         }
@@ -57,18 +66,20 @@ public class FlowImpl implements Flow {
     }
 
     private void handleContinueCommand(Continue continueEvent) {
-        if (!state.compareAndSet(FlowState.READY, FlowState.RUNNING)) {
-            throw new IllegalStateException("Flow cannot run because it is in invalid state. Flow state: "+ state.get());
+        if(!startedEventPublished) {
+            context.flowEventPublisher().publish(new FlowStartedEvent(flowID));
+            startedEventPublished = true;
+            state = FlowState.RUNNING;
         }
 
-        if(havePublishedStartEvent.compareAndSet(false, true)) {
-            context.flowEventPublisher().publish(new FlowStartedEvent(flowID));
+        if (state != FlowState.RUNNING) {
+            throw new IllegalStateException("Cannot continue a flow that's in "+state+" state.");
         }
 
         propagateEvent(continueEvent);
 
         context.flowEventPublisher().publish(new FlowCompletedEvent(flowID));
-        state.set(FlowState.COMPLETED);
+        state = FlowState.COMPLETED;
     }
 
     private void propagateEvent(ExecutionEvent event){
@@ -100,15 +111,24 @@ public class FlowImpl implements Flow {
 
     private void interrupted(FlowInterruptedException ex){
         Thread.currentThread().interrupt();
-        assert state.get() == FlowState.RUNNING;
-        state.compareAndSet(FlowState.RUNNING, FlowState.PAUSED);
+        assert state == FlowState.RUNNING;
+
+        if(state != FlowState.RUNNING) {
+            throw new IllegalStateException("Cannot interrupt a flow that's in "+state+" state.");
+        }
+
+        state = FlowState.PAUSED;
         context.flowEventPublisher().publish(new FlowPausedEvent(flowID));
         throw ex;
     }
 
     private void failed(RuntimeException ex) {
-        assert state.get() == FlowState.RUNNING;
-        state.compareAndSet(FlowState.RUNNING, FlowState.FAILED);
+        assert state == FlowState.RUNNING;
+
+        if(state != FlowState.RUNNING) {
+            throw new IllegalStateException("Not running flow failed with exception",ex);
+        }
+        state = FlowState.FAILED;
         context.flowEventPublisher().publish(new FlowFailedEvent(flowID,ex));
 
         throw ex;
@@ -116,7 +136,7 @@ public class FlowImpl implements Flow {
 
     @Override
     public FlowState state() {
-        return state.get();
+        return state;
     }
 
     @Override

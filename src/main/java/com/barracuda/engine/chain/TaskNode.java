@@ -26,7 +26,7 @@ public class TaskNode<I,R> implements ChainNode{
     private final Supplier<I> taskInputSupplier;
     private final Consumer<R> taskOutputConsumer;
     private final ExecutorService executor;
-    private final AtomicBoolean havePublishedTaskStartedEvent  = new AtomicBoolean(false);
+    private volatile boolean havePublishedTaskStartedEvent  = false;
 
     public TaskNode(ChainNode next, Task<I, R> task, Supplier<I> taskInputSupplier, Consumer<R> taskOutputConsumer, ExecutorService executor) {
         this.next = next;
@@ -42,9 +42,10 @@ public class TaskNode<I,R> implements ChainNode{
         switch (event){
             case TaskFailedEvent ev when ev.taskID() == task.id() -> throw ev.exception();
             case TaskStartEvent ev when ev.taskID() == task.id() -> {
-                if(!havePublishedTaskStartedEvent.compareAndSet(false, true)){
-                    throw new ConcurrentModificationException("Flow potentially getting events from multiple sources");
+                if(havePublishedTaskStartedEvent){
+                    throw new IllegalStateException("Duplicate task started event");
                 }
+                havePublishedTaskStartedEvent = true;
                 return;
             }
             case Continue _ -> { }
