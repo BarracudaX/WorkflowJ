@@ -8,9 +8,7 @@ import com.barracuda.engine.test.task.TestTaskInput.TestTaskNullInput;
 import java.time.Duration;
 import java.util.Deque;
 import java.util.Objects;
-import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedDeque;
-import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -20,13 +18,13 @@ import static com.barracuda.engine.utility.AwaitilityUtils.*;
  * A task that blocks on a latch that can be asked to either finish normally or with an exception.
  * Note that before calling finish or fail, use waiUntilRunning to verify that the task runs; otherwise, an IllegalStateException will be thrown because the task isn't running.
  */
-public class TestTask<I> implements Task<I, Void> {
+public final class TestTask<I> implements Task<I, Void> {
 
     public enum TaskThread {
-        VIRTUAL, PLATFORM, NONE
+        VIRTUAL, PLATFORM, NONE;
     }
-
     private final AtomicReference<TestTaskState> state = new AtomicReference<>(TestTaskState.CREATED);
+
     private final CountDownLatch latch = new CountDownLatch(1);
     private volatile RuntimeException failException;
     private volatile Deque<TestTaskInput<I>> input_history = new ConcurrentLinkedDeque<>();
@@ -34,7 +32,6 @@ public class TestTask<I> implements Task<I, Void> {
     private final String name;
     private Deque<TaskEvent> events = new ConcurrentLinkedDeque<>();
     private final Deque<Thread> thread_history = new ConcurrentLinkedDeque<>();
-
     public TestTask(long id, String name) {
         this.id = id;
         this.name = name;
@@ -90,21 +87,17 @@ public class TestTask<I> implements Task<I, Void> {
         return this;
     }
 
-    public void waitUntilRunning(Duration duration){ waitUntilTestTaskIsRunning(this, duration);}
-
     public void waitUntilCompleted(Duration duration) {
         waitUntilTestTaskCompleted(this, duration);
     }
 
     public void waitUntilFailed(Duration duration) { waitUntilTestTaskFailed(this, duration);}
 
-    public void waitUntilPaused(Duration duration) { waitUntilTestTaskInterrupted(this, duration); }
-
     public TestTaskState state() {
         return state.get();
     }
 
-    public TaskThread taskThread() {
+    public TaskThread lastTaskThread() {
         var last_thread = thread_history.peekLast();
         if (last_thread == null) {
             return TaskThread.NONE;

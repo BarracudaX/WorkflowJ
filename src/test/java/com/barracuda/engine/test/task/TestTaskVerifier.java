@@ -20,12 +20,12 @@ public class TestTaskVerifier<T> {
     }
 
     public TestTaskVerifier<T> ranOnVirtualThread(){
-        assertThat(testTask.taskThread()).isEqualTo(TestTask.TaskThread.VIRTUAL);
+        assertThat(testTask.lastTaskThread()).isEqualTo(TestTask.TaskThread.VIRTUAL);
         return this;
     }
 
     public TestTaskVerifier<T> ranOnPlatformThread(){
-        assertThat(testTask.taskThread()).isEqualTo(TestTask.TaskThread.PLATFORM);
+        assertThat(testTask.lastTaskThread()).isEqualTo(TestTask.TaskThread.PLATFORM);
         return this;
     }
 

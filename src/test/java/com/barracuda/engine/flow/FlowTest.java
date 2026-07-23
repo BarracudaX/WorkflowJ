@@ -1,6 +1,5 @@
 package com.barracuda.engine.flow;
 
-import com.barracuda.engine.event.ExecutionEvent;
 import com.barracuda.engine.event.ExecutionEvent.CommandEvent.Continue;
 import com.barracuda.engine.utility.AwaitilityUtils;
 import org.junit.jupiter.api.Disabled;
@@ -44,7 +43,7 @@ public class FlowTest extends AbstractFlowTest{
 
         //Note that testFlow by default runs IO tasks on virtual thread and cpu tasks on platform threads.
         testFlow()
-                .task("IoTask")
+                .ioTask("IoTask")
                 .cpuTask("CpuTask")
                 .build()
                 .startFlow()

@@ -12,7 +12,7 @@ public class FlowResetTest {
     @Test
     void shouldNotAllowResettingRunningFlow() {
         testFlow()
-                .task("task")
+                .ioTask("task")
                 .build()
                 .startFlow()
                 .expectIsRunning()
@@ -22,7 +22,7 @@ public class FlowResetTest {
     @Test
     void shouldAllowResettingCompletedFlow() {
         testFlow()
-                .task("task")
+                .ioTask("task")
                 .build()
                 .startFlow()
                 .assertTaskRunning("task")
@@ -35,7 +35,7 @@ public class FlowResetTest {
     @Test
     void shouldAllowResettingFailedFlow() {
         testFlow()
-                .task("task")
+                .ioTask("task")
                 .build()
                 .startFlow()
                 .assertTaskRunning("task")
@@ -48,7 +48,7 @@ public class FlowResetTest {
     @Test
     void shouldAllowResettingPausedFlow() {
         testFlow()
-                .task("task")
+                .ioTask("task")
                 .build()
                 .startFlow()
                 .assertTaskRunning("task")

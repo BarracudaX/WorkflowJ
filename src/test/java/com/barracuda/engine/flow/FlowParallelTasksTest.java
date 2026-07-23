@@ -1,6 +1,5 @@
 package com.barracuda.engine.flow;
 
-import com.barracuda.engine.event.ExecutionEvent;
 import com.barracuda.engine.event.ExecutionEvent.CommandEvent.Continue;
 import com.barracuda.engine.test.task.ParallelTestTask;
 import com.barracuda.engine.test.flow.TestSubflow;
@@ -74,7 +73,7 @@ public class FlowParallelTasksTest extends AbstractFlowTest{
     void shouldNotRunNextTaskWhenParallelSubflowFails() {
         testFlow()
                 .subflows(new TestSubflow( "Subflow1", List.of("ParallelTask1")))
-                .task("NextTask")
+                .ioTask("NextTask")
                 .build()
                 .startFlow()
                 .failTask("ParallelTask1",new RuntimeException("FAILED"))
@@ -87,7 +86,7 @@ public class FlowParallelTasksTest extends AbstractFlowTest{
         testFlow()
                 .subflows(new TestSubflow( "Subflow1", List.of("ParallelTask1")))
                 .subflows(new TestSubflow( "Subflow2", List.of("ParallelTask2")))
-                .task("NextTask")
+                .ioTask("NextTask")
                 .build()
                 .startFlow()
                 .finishTask("ParallelTask1")

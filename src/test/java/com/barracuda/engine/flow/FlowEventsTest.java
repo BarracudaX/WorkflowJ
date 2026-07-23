@@ -1,7 +1,6 @@
 package com.barracuda.engine.flow;
 
 import com.barracuda.engine.test.flow.TestSubflow;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -16,7 +15,7 @@ public class FlowEventsTest {
     @Test
     void shouldPublishFlowStartedEventWhenStartingTheFlow() {
         testFlow()
-                .task("test")
+                .ioTask("test")
                 .build()
                 .startFlow()
                 .assertFlowEventsInOrder(events -> events.hasFlowStartedEvent().andHasNoMoreEvents());
@@ -25,7 +24,7 @@ public class FlowEventsTest {
     @Test
     void shouldPublishFlowCompletedEventWhenFlowFinishesNormally() {
         testFlow()
-                .task("test")
+                .ioTask("test")
                 .build()
                 .startFlow()
                 .finishTask("test")
@@ -38,7 +37,7 @@ public class FlowEventsTest {
         var exception = new RuntimeException("FAILED");
 
         testFlow()
-                .task("test")
+                .ioTask("test")
                 .build()
                 .startFlow()
                 .failTask("test", exception)
@@ -50,11 +49,11 @@ public class FlowEventsTest {
     void shouldPublishFlowPausedEventWhenInterrupted() {
         //need better output for debugging/testing.
         testFlow()
-                .task("task1")
+                .ioTask("task1")
                 .subflows(new TestSubflow( "Subflow1", List.of("parallelTask1")))
                 .subflows(new TestSubflow( "Subflow2", List.of("parallelTask2")))
                 .subflows(new TestSubflow( "Subflow3", List.of("parallelTask3")))
-                .task("task2")
+                .ioTask("task2")
                 .build()
                 .startFlow()
                 .finishTask("task1")
@@ -67,9 +66,9 @@ public class FlowEventsTest {
     @Test
     void shouldPublishSubflowEventsForSubflows() {
         testFlow()
-                .task("task1")
+                .ioTask("task1")
                 .subflows(new TestSubflow( "Subflow1", List.of("parallelTask1")),new TestSubflow( "Subflow2", List.of("parallelTask2")),new TestSubflow( "Subflow3", List.of("parallelTask3")))
-                .task("task2")
+                .ioTask("task2")
                 .build()
                 .startFlow()
                 .finishTask("task1")

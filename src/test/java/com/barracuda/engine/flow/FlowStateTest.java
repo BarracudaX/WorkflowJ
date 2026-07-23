@@ -12,7 +12,7 @@ public class FlowStateTest {
     @Test
     void newlyCreatedFlowShouldBeInReadyState() {
         testFlow()
-                .task("Task")
+                .ioTask("Task")
                 .build()
                 .expectFlowReady();
     }
@@ -20,7 +20,7 @@ public class FlowStateTest {
     @Test
     void runningFlowShouldHaveRunningState() {
         testFlow()
-                .task("Task")
+                .ioTask("Task")
                 .build()
                 .startFlow()
                 .expectIsRunning();
@@ -29,7 +29,7 @@ public class FlowStateTest {
     @Test
     void shouldHaveCompletedStateOnceFinished() {
         testFlow()
-                .task("Task")
+                .ioTask("Task")
                 .build()
                 .startFlow()
                 .finishTask("Task")
@@ -40,7 +40,7 @@ public class FlowStateTest {
     void shouldHaveFailedStateIfTaskFailsWithException() {
         var exception = new RuntimeException("FAILED");
         testFlow()
-                .task("FailTask")
+                .ioTask("FailTask")
                 .build()
                 .startFlow()
                 .failTask("FailTask", exception)
@@ -50,7 +50,7 @@ public class FlowStateTest {
     @Test
     void shouldHavePausedStateWhenInterrupted() {
         testFlow()
-                .task("FirstTask")
+                .ioTask("FirstTask")
                 .build()
                 .startFlow()
                 .interruptFlowAndExpectFlowPaused();

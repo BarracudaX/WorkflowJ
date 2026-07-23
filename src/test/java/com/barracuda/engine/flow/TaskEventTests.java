@@ -12,7 +12,7 @@ public class TaskEventTests {
     @Test
     void shouldPublishTaskStartedEventWhenExecutingTheTask() {
         testFlow()
-                .task("test")
+                .ioTask("test")
                 .build()
                 .startFlow()
                 .assertTaskEventsInOrder("test",events -> events.hasTaskStartedEvent().andHasNoMoreEvents());
@@ -21,7 +21,7 @@ public class TaskEventTests {
     @Test
     void shouldPublishTaskCompletedEventWhenTaskFinishesNormally() {
         testFlow()
-                .task("test")
+                .ioTask("test")
                 .build()
                 .startFlow()
                 .finishTask("test")
@@ -33,7 +33,7 @@ public class TaskEventTests {
         var exception = new RuntimeException("FAILED");
 
         testFlow()
-                .task("test")
+                .ioTask("test")
                 .build()
                 .startFlow()
                 .failTask("test", exception)
@@ -44,7 +44,7 @@ public class TaskEventTests {
     @Test
     void shouldPublishTaskPausedEventWhenTaskInterrupted() {
         testFlow()
-                .task("test")
+                .ioTask("test")
                 .build()
                 .startFlow()
                 .interruptFlowAndExpectFlowPaused()

@@ -18,6 +18,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.function.Consumer;
 
@@ -27,15 +28,14 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 public final class TestFlow {
 
     private final Flow flow;
-    private final ExecutorService executorService;
+    private final ExecutorService executorService = Executors.newVirtualThreadPerTaskExecutor();
     private final Map<Class<?>, Map<String, TestTask<?>>> tasks;
     private final InMemoryEventCapturer eventCapturer;
     private Future<?> flowTask;
     private final Map<String,Long> subflows;
 
-    public TestFlow(Flow flow, ExecutorService executorService, Map<Class<?>, Map<String,TestTask<?>>> tasks, InMemoryEventCapturer eventCapturer,Map<String,Long> subflows) {
+    public TestFlow(Flow flow, Map<Class<?>, Map<String,TestTask<?>>> tasks, InMemoryEventCapturer eventCapturer, Map<String,Long> subflows) {
         this.flow = flow;
-        this.executorService = executorService;
         this.eventCapturer = eventCapturer;
         this.tasks = tasks;
         this.subflows = subflows;

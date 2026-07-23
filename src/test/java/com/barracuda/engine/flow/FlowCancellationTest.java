@@ -12,7 +12,7 @@ public class FlowCancellationTest {
     @Test
     void shouldCancelAllRunningTaskWhenPaused() {
         testFlow()
-                .task("FirstTask")
+                .ioTask("FirstTask")
                 .build()
                 .startFlow()
                 .interruptFlowAndExpectFlowPaused()
@@ -22,8 +22,8 @@ public class FlowCancellationTest {
     @Test
     void shouldNotExecuteNextTaskWhenInterrupted() {
         testFlow()
-                .task("FirstTask")
-                .task("SecondTask")
+                .ioTask("FirstTask")
+                .ioTask("SecondTask")
                 .build()
                 .startFlow()
                 .assertTaskRunning("FirstTask")

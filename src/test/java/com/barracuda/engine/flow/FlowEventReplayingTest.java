@@ -1,7 +1,6 @@
 package com.barracuda.engine.flow;
 
 import com.barracuda.engine.test.flow.TestFlow;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import static com.barracuda.engine.test.builder.TestFlowBuilder.testFlow;
@@ -28,7 +27,7 @@ public class FlowEventReplayingTest {
     @Test
     void shouldNotAllowSendingEventsToFlowThatIsRunning() {
         testFlow()
-                .task("task")
+                .ioTask("task")
                 .build()
                 .startFlow()
                 .assertThrows(TestFlow::sendStartEvent,assertError -> assertError.isInstanceOf(IllegalStateException.class).hasMessageContaining("Flow cannot accept events"));
@@ -37,7 +36,7 @@ public class FlowEventReplayingTest {
     @Test
     void shouldNotAllowSendingEventsToFailedFlow() {
         testFlow()
-                .task("task")
+                .ioTask("task")
                 .build()
                 .startFlow()
                 .failTask("task", new RuntimeException("FAILED"))
