@@ -15,7 +15,7 @@ public class TestTaskVerifier<T> {
     }
 
     public TestTaskVerifier<T> received(T input) {
-        assertThat(testTask.input()).isEqualTo(input);
+        assertThat(testTask.lastInput()).isEqualTo(input);
         return this;
     }
 

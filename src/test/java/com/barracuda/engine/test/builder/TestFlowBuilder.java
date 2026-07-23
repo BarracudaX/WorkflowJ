@@ -1,5 +1,6 @@
 package com.barracuda.engine.test.builder;
 
+import com.barracuda.engine.builder.AbstractFlowBuilder;
 import com.barracuda.engine.builder.FlowBuilder;
 import com.barracuda.engine.event.EvenPublisherImpl;
 import com.barracuda.engine.event.FlowEventPublisher;
@@ -33,54 +34,65 @@ public class TestFlowBuilder {
     }
 
     public <T> TestFlowBuilder consumerTask(String taskName, Class<T> clazz, Supplier<T> dataSupplier) {
+
         testTasks.putIfAbsent(clazz, new LinkedHashMap<>());
-        TestTask<T> task = new TestTask<>(nextID++);
-        if (testTasks.get(clazz).put(taskName, task) != null) {
-            throw new IllegalArgumentException("Duplicate task name: " + taskName);
-        }
-        flowBuilder.ioTask(task,dataSupplier);
+
+        createAndSaveTask(taskName,flowBuilder,clazz,dataSupplier);
+
         return this;
     }
 
     public TestFlowBuilder subflows(TestSubflow... testSubflows) {
         flowBuilder.parallel(parallel -> {
             for(TestSubflow testSubflow : testSubflows) {
-                var flowID = nextID++;
-                parallel.subflow(flowID,subflow -> {
+
+                var subflowID = nextID++;
+
+                parallel.subflow(subflowID,subflow -> {
+
                     for (String taskName : testSubflow.tasks()) {
-                        var task = new TestTask<Void>(nextID++);
-                        subflow.ioTask(task);
-                        putTask(taskName, task);
+                        createAndSaveTask(taskName,subflow,Void.class,FlowBuilder.nullSupplier());
                     }
-                    if(subflowsMap.put(testSubflow.name(),flowID) != null){
+
+                    if(subflowsMap.put(testSubflow.name(),subflowID) != null){
                         throw new IllegalArgumentException("Duplicate subflow name: " + testSubflow.name());
                     }
+
                 });
             }
         });
         return this;
     }
 
+    private <I> void createAndSaveTask(String taskName, AbstractFlowBuilder<?> builder, Class<I> clazz, Supplier<I> dataSupplier) {
+        var task = new TestTask<I>(nextID++,taskName);
+
+        builder.ioTask(task,dataSupplier);
+
+        saveTask(taskName, task, clazz);
+
+    }
+
     public TestFlowBuilder task(String taskName) {
-        TestTask<Void> task = new TestTask<>(nextID++);
-        putTask(taskName,task);
+        TestTask<Void> task = new TestTask<>(nextID++,taskName);
+        saveTask(taskName,task, Void.class);
         flowBuilder.ioTask(task);
 
         return this;
     }
 
     public TestFlowBuilder cpuTask(String taskName) {
-        TestTask<Void> task = new TestTask<>(nextID++);
+        TestTask<Void> task = new TestTask<>(nextID++,taskName);
 
-        putTask(taskName,task);
+        saveTask(taskName,task, Void.class);
 
         flowBuilder.cpuTask(task);
 
         return this;
     }
 
-    private void putTask(String taskName, TestTask<Void> task) {
-        if (testTasks.get(Void.class).put(taskName, task) != null) {
+    private <I> void saveTask(String taskName, TestTask<I> task, Class<I> clazz) {
+        if (testTasks.get(clazz).put(taskName, task) != null) {
             throw new IllegalArgumentException("Duplicate task name: " + taskName);
         }
     }

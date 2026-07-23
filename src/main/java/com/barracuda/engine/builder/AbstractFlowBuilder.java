@@ -81,11 +81,11 @@ public abstract class AbstractFlowBuilder<T extends AbstractFlowBuilder<T>> {
         return ioTask(Task.fromRunnable(task,id), nullSupplier(), noopConsumer());
     }
 
-    private static <T> Consumer<T> noopConsumer(){
+    public static <T> Consumer<T> noopConsumer(){
         return _ -> {};
     }
 
-    private static <T>Supplier<T> nullSupplier(){
+    public static <T>Supplier<T> nullSupplier(){
         return () -> (T) null;
     }
 
