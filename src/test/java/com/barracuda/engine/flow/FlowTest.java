@@ -1,6 +1,7 @@
 package com.barracuda.engine.flow;
 
 import com.barracuda.engine.event.ExecutionEvent.CommandEvent.Continue;
+import com.barracuda.engine.test.flow.TestFlow;
 import com.barracuda.engine.utility.AwaitilityUtils;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
@@ -40,7 +41,6 @@ public class FlowTest extends AbstractFlowTest{
 
     @Test
     void shouldExecuteIoAndCpuTasksOnDifferentExecutors() {
-
         //Note that testFlow by default runs IO tasks on virtual thread and cpu tasks on platform threads.
         testFlow()
                 .ioTask("IoTask")
@@ -58,8 +58,12 @@ public class FlowTest extends AbstractFlowTest{
     void shouldExecutedTasksSequentially() {
     }
 
-    @Disabled("TODO")
     @Test
     void shouldThrowISEWhenTryingToExecuteAlreadyRunningFlow() {
+        testFlow()
+                .ioTask("task")
+                .build()
+                .startFlow()
+                .assertThrows(TestFlow::startSync, error -> error.isInstanceOf(IllegalStateException.class));
     }
 }

@@ -1,6 +1,7 @@
 package com.barracuda.engine.test.flow;
 
 import com.barracuda.engine.event.ExecutionEvent;
+import com.barracuda.engine.event.ExecutionEvent.CommandEvent.Continue;
 import com.barracuda.engine.event.InMemoryEventCapturer;
 import com.barracuda.engine.flow.Flow;
 import com.barracuda.engine.flow.FlowState;
@@ -14,6 +15,7 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -61,9 +63,20 @@ public class TestFlow {
     }
 
     public TestFlow startFlow() {
-        flowTask = executorService.submit( () -> flow.event(new ExecutionEvent.CommandEvent.Continue()));
+        flowTask = executorService.submit( () -> flow.event(new Continue()));
         AwaitilityUtils.waitUntilFlowRunning(flow, Duration.ofSeconds(1));
         return this;
+    }
+
+    public void startSync(){
+        try {
+            executorService.submit( () -> flow.event(new Continue())).get();
+        } catch (InterruptedException | ExecutionException e) {
+            if(e.getCause() instanceof RuntimeException runtimeException) {
+                throw runtimeException;
+            }
+            throw new RuntimeException(e);
+        }
     }
 
     public TestFlow assertThrows(Consumer<TestFlow> consumer, Consumer<AbstractThrowableAssert<? extends AbstractThrowableAssert<?,?>,?>> assertionConsumer){
