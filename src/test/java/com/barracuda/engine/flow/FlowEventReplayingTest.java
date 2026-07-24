@@ -19,7 +19,7 @@ public class FlowEventReplayingTest {
                 .build()
                 .startFlowIgnoreIfCompleted()
                 .expectFlowCompleted()
-                .assertThrows(TestFlow::sendStartEvent,assertError -> assertError.isInstanceOf(IllegalStateException.class).hasMessageContaining("Flow cannot accept events"));
+                .assertThrows(TestFlow::sendStartEvent, assertError -> assertError.isInstanceOf(IllegalStateException.class).hasMessageContaining("Flow cannot accept events"));
         //add more assertions for other events here
     }
 
@@ -30,7 +30,7 @@ public class FlowEventReplayingTest {
                 .ioTask("task")
                 .build()
                 .startFlow()
-                .assertThrows(TestFlow::sendStartEvent,assertError -> assertError.isInstanceOf(IllegalStateException.class).hasMessageContaining("Flow cannot accept events"));
+                .assertThrows(TestFlow::sendStartEvent, assertError -> assertError.isInstanceOf(IllegalStateException.class).hasMessageContaining("Flow cannot accept events"));
     }
 
     @Test

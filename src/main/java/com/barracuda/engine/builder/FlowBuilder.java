@@ -12,17 +12,8 @@ import java.util.function.Function;
 
 public class FlowBuilder extends AbstractFlowBuilder<FlowBuilder> {
 
-
-    public FlowBuilder(long flowID, ExecutorService cpuExecutor, ExecutorService ioExecutor, FlowEventPublisher flowEventPublisher) {
-        super(flowID, cpuExecutor, ioExecutor,flowEventPublisher, flowID);
-    }
-
     public FlowBuilder(long flowID, ExecutorService cpuExecutor, ExecutorService ioExecutor) {
-        super(flowID, cpuExecutor, ioExecutor, new NoOpEvenPublisher(), flowID);
-    }
-
-    FlowBuilder(long subflowID, ExecutorService cpuExecutor, ExecutorService ioExecutor, FlowEventPublisher flowEventPublisher, long rootID) {
-        super(subflowID, cpuExecutor, ioExecutor, flowEventPublisher, rootID);
+        super(flowID, cpuExecutor, ioExecutor);
     }
 
     public Flow build() {

@@ -1,16 +1,13 @@
 package com.barracuda.engine.test.flow;
 
 import com.barracuda.engine.event.ExecutionEvent;
-import com.barracuda.engine.event.ExecutionEvent.CommandEvent.Continue;
-import com.barracuda.engine.event.ExecutionEvent.CommandEvent.Reset;
-import com.barracuda.engine.event.ExecutionEvent.FlowEvent.FlowStartedEvent;
+import com.barracuda.engine.event.InMemoryEventCapturer;
+import com.barracuda.engine.flow.Flow;
+import com.barracuda.engine.flow.FlowState;
 import com.barracuda.engine.test.task.TaskEventsInOrderVerifier;
 import com.barracuda.engine.test.task.TestTask;
 import com.barracuda.engine.test.task.TestTaskVerifier;
 import com.barracuda.engine.utility.AwaitilityUtils;
-import com.barracuda.engine.event.InMemoryEventCapturer;
-import com.barracuda.engine.flow.Flow;
-import com.barracuda.engine.flow.FlowState;
 import org.assertj.core.api.AbstractThrowableAssert;
 
 import java.time.Duration;
@@ -25,20 +22,20 @@ import java.util.function.Consumer;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-public final class TestFlow {
+public class TestFlow {
 
-    private final Flow flow;
-    private final ExecutorService executorService = Executors.newVirtualThreadPerTaskExecutor();
-    private final Map<Class<?>, Map<String, TestTask<?>>> tasks;
     private final InMemoryEventCapturer eventCapturer;
+    private final ExecutorService executorService = Executors.newVirtualThreadPerTaskExecutor();
+    private final Flow flow;
+    private final Map<String,TestFlow> subflows;
+    private final Map<Class<?>, Map<String, TestTask<?>>> tasks;
     private Future<?> flowTask;
-    private final Map<String,Long> subflows;
 
-    public TestFlow(Flow flow, Map<Class<?>, Map<String,TestTask<?>>> tasks, InMemoryEventCapturer eventCapturer, Map<String,Long> subflows) {
-        this.flow = flow;
+    public TestFlow(InMemoryEventCapturer eventCapturer, Flow flow, Map<String, TestFlow> subflows, Map<Class<?>, Map<String, TestTask<?>>> tasks) {
         this.eventCapturer = eventCapturer;
-        this.tasks = tasks;
+        this.flow = flow;
         this.subflows = subflows;
+        this.tasks = tasks;
     }
 
     public List<ExecutionEvent> events(){
@@ -46,18 +43,18 @@ public final class TestFlow {
     }
 
     public TestFlow reset(){
-        flow.event(new Reset());
+        flow.event(new ExecutionEvent.CommandEvent.Reset());
         return this;
     }
 
     public TestFlow sendStartEvent(){
-        flow.event(new FlowStartedEvent(flow.id()));
+        flow.event(new ExecutionEvent.FlowEvent.FlowStartedEvent(flow.id()));
         return this;
     }
 
     public TestFlow startFlow() {
-        flowTask = executorService.submit( () -> flow.event(new Continue()));
-        AwaitilityUtils.waitUntilFlowRunning(flow,Duration.ofSeconds(1));
+        flowTask = executorService.submit( () -> flow.event(new ExecutionEvent.CommandEvent.Continue()));
+        AwaitilityUtils.waitUntilFlowRunning(flow, Duration.ofSeconds(1));
         return this;
     }
 
@@ -69,7 +66,6 @@ public final class TestFlow {
     /**
      * Starts the flow. Ignores if the flow transitions to COMPLETED state because it's empty or the configured task completes faster than the
      * code gets to see the RUNNING state of the flow.
-     * @return
      */
     public TestFlow startFlowIgnoreIfCompleted(){
         try{
@@ -80,8 +76,7 @@ public final class TestFlow {
     }
 
     public TestFlow interruptFlowAndExpectFlowPaused() {
-        flowTask.cancel(true);
-        AwaitilityUtils.waitUntilFlowPaused(flow,Duration.ofSeconds(1));
+        interruptFlowAndExpectFlowPaused(Duration.ofSeconds(1));
         return this;
     }
 
@@ -163,20 +158,29 @@ public final class TestFlow {
         return this;
     }
 
-    public TestFlow assertSubflowEventsInOrder(String subflow, Consumer<SubflowEventsInOrderVerifier> consumer) {
-        long subflowID = Objects.requireNonNull(subflows.get(subflow), "Subflow with name " + subflow + " not found. Configured subflows: " + subflows.keySet());
-        consumer.accept(new SubflowEventsInOrderVerifier(flow,eventCapturer.subflowEvents(flow.id(),subflowID),subflowID));
-        return this;
-    }
-
     public TestFlow assertTaskEventsInOrder(String taskName, Consumer<TaskEventsInOrderVerifier> consumer) {
         var task = getTestTaskByName(taskName);
         consumer.accept(new TaskEventsInOrderVerifier(task, eventCapturer.taskEvents(task.id())));
         return this;
     }
 
+    public TestFlow assertSubflowEventsInOrder(String subflow, Consumer<SubflowEventsInOrderVerifier> consumer) {
+        long subflowID = getSubflowByName(subflow).flow.id();
+        consumer.accept(new SubflowEventsInOrderVerifier(flow,eventCapturer.subflowEvents(flow.id(),subflowID),subflowID));
+        return this;
+    }
+
     private TestTask<Void> getTestTaskByName(String taskName) {
-        return Objects.requireNonNull(getConsumerTaskByName(taskName, Void.class));
+        try {
+            return Objects.requireNonNull(getConsumerTaskByName(taskName, Void.class));
+        }catch (NullPointerException e) {
+            for(var subflow : subflows.values()) {
+                try{
+                    return subflow.getTestTaskByName(taskName);
+                }catch (NullPointerException _){}
+            }
+            throw e;
+        }
     }
 
     private <I> TestTask<I> getConsumerTaskByName(String taskName,Class<I> clazz) {
@@ -187,4 +191,14 @@ public final class TestFlow {
         return (TestTask<I>) task;
     }
 
+    private TestFlow getSubflowByName(String subflowName) {
+        try {
+            return Objects.requireNonNull(subflows.get(subflowName), "Subflow with name " + subflowName + " not found. Configured subflows: " + subflows.keySet());
+        } catch (NullPointerException ex) {
+            for(var subflow : subflows.values()) {
+                subflow.getSubflowByName(subflowName);
+            }
+            throw ex;
+        }
+    }
 }

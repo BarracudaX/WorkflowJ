@@ -1,9 +1,6 @@
 package com.barracuda.engine.flow;
 
-import com.barracuda.engine.test.flow.TestSubflow;
 import org.junit.jupiter.api.Test;
-
-import java.util.List;
 
 import static com.barracuda.engine.test.builder.TestFlowBuilder.testFlow;
 
@@ -50,9 +47,9 @@ public class FlowEventsTest {
         //need better output for debugging/testing.
         testFlow()
                 .ioTask("task1")
-                .subflows(new TestSubflow( "Subflow1", List.of("parallelTask1")))
-                .subflows(new TestSubflow( "Subflow2", List.of("parallelTask2")))
-                .subflows(new TestSubflow( "Subflow3", List.of("parallelTask3")))
+                .parallel(parallel -> parallel.subflow("Subflow1", subflow -> subflow.ioTask("parallelTask1")))
+                .parallel(parallel -> parallel.subflow("Subflow2", subflow -> subflow.ioTask("parallelTask2")))
+                .parallel(parallel -> parallel.subflow("Subflow3", subflow -> subflow.ioTask("parallelTask3")))
                 .ioTask("task2")
                 .build()
                 .startFlow()
@@ -67,7 +64,11 @@ public class FlowEventsTest {
     void shouldPublishSubflowEventsForSubflows() {
         testFlow()
                 .ioTask("task1")
-                .subflows(new TestSubflow( "Subflow1", List.of("parallelTask1")),new TestSubflow( "Subflow2", List.of("parallelTask2")),new TestSubflow( "Subflow3", List.of("parallelTask3")))
+                .parallel(parallel -> parallel
+                        .subflow("Subflow1", subflow -> subflow.ioTask("parallelTask1"))
+                        .subflow("Subflow2", subflow -> subflow.ioTask("parallelTask2"))
+                        .subflow("Subflow3", subflow -> subflow.ioTask("parallelTask3"))
+                )
                 .ioTask("task2")
                 .build()
                 .startFlow()

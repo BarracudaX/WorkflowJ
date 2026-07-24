@@ -4,8 +4,9 @@ import com.barracuda.engine.chain.ChainNode;
 import com.barracuda.engine.chain.ParallelNode;
 import com.barracuda.engine.chain.TaskNode;
 import com.barracuda.engine.event.FlowEventPublisher;
+import com.barracuda.engine.event.NoOpEvenPublisher;
+import com.barracuda.engine.event.SubflowEventPublisherDecorator;
 import com.barracuda.engine.flow.Flow;
-import com.barracuda.engine.flow.SubflowDecorator;
 import com.barracuda.engine.task.Task;
 
 import java.util.ArrayList;
@@ -21,29 +22,26 @@ public abstract class AbstractFlowBuilder<T extends AbstractFlowBuilder<T>> {
     private final ExecutorService cpuExecutor;
     private final ExecutorService ioExecutor;
     protected final List<Function<ChainNode,ChainNode>> chainNodes = new ArrayList<>();
-    protected FlowEventPublisher flowEventPublisher;
+    protected FlowEventPublisher flowEventPublisher = new NoOpEvenPublisher();
     protected final long flowID;
-    protected final Long rootID;
 
-    protected AbstractFlowBuilder(long flowID, ExecutorService cpuExecutor, ExecutorService ioExecutor, FlowEventPublisher flowEventPublisher, Long rootID) {
+    protected AbstractFlowBuilder(long flowID, ExecutorService cpuExecutor, ExecutorService ioExecutor) {
         this.cpuExecutor = cpuExecutor;
         this.ioExecutor = ioExecutor;
-        this.flowEventPublisher = flowEventPublisher;
-        this.rootID = rootID;
         this.flowID = flowID;
     }
 
+    public T eventPublisher(FlowEventPublisher flowEventPublisher) {
+        this.flowEventPublisher = flowEventPublisher;
+        return self();
+    }
+
     public T parallel(Consumer<SubflowBuilder> consumer) {
-        Objects.requireNonNull(rootID,"Cannot create subflows before root flow has an id");
-        var builder = new SubflowBuilder(cpuExecutor,ioExecutor,flowEventPublisher,rootID);
+        var builder = new SubflowBuilder();
 
         consumer.accept(builder);
 
-        List<Flow> subflows = builder.subflows.stream()
-                .map(FlowBuilder::build).map(flow -> (Flow) new SubflowDecorator(flow))
-                .toList();
-
-        chainNodes.add((next) -> new ParallelNode(subflows,next));
+        chainNodes.add((next) -> new ParallelNode(builder.subflows,next));
 
         return self();
     }
@@ -90,4 +88,22 @@ public abstract class AbstractFlowBuilder<T extends AbstractFlowBuilder<T>> {
     }
 
     protected abstract T self();
+
+    public class SubflowBuilder {
+
+        final List<Flow> subflows = new ArrayList<>();
+
+        public SubflowBuilder() {
+        }
+
+        public SubflowBuilder subflow(long subflowID, Consumer<AbstractFlowBuilder<?>> flowBuilderConsumer) {
+            var builder = new FlowBuilder(subflowID, cpuExecutor, ioExecutor).eventPublisher(new SubflowEventPublisherDecorator(subflowID,flowID,flowEventPublisher));
+            flowBuilderConsumer.accept(builder);
+
+            subflows.add(builder.build());
+
+            return this;
+        }
+
+    }
 }
