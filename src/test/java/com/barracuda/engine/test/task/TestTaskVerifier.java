@@ -30,7 +30,7 @@ public class TestTaskVerifier<T> {
     }
 
     public TestTaskVerifier<T> hasNotStarted() {
-        assertThat(testTask.state()).isEqualTo(TestTaskState.CREATED);
+        assertThat(testTask.state()).isEqualTo(TestTaskState.READY);
         return this;
     }
 

@@ -2,6 +2,7 @@ package com.barracuda.engine.test.flow;
 
 import com.barracuda.engine.event.ExecutionEvent;
 import com.barracuda.engine.event.ExecutionEvent.CommandEvent.Continue;
+import com.barracuda.engine.event.ExecutionEvent.CommandEvent.Reset;
 import com.barracuda.engine.event.InMemoryEventCapturer;
 import com.barracuda.engine.flow.Flow;
 import com.barracuda.engine.flow.FlowState;
@@ -12,7 +13,6 @@ import com.barracuda.engine.utility.AwaitilityUtils;
 import org.assertj.core.api.AbstractThrowableAssert;
 
 import java.time.Duration;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ExecutionException;
@@ -48,12 +48,8 @@ public class TestFlow {
         return flow.id();
     }
 
-    public List<ExecutionEvent> events(){
-        return eventCapturer.events();
-    }
-
     public TestFlow reset(){
-        flow.event(new ExecutionEvent.CommandEvent.Reset());
+        flow.event(new Reset());
         return this;
     }
 
@@ -162,19 +158,19 @@ public class TestFlow {
         return assertTaskRunning(taskName);
     }
 
-    public TestFlow assertTaskCancelled(String taskName){
+    public TestFlow expectTaskCancelled(String taskName){
         return assertThatTask(taskName, TestTaskVerifier::wasCancelled);
     }
 
-    public TestFlow assertTaskNotStarted(String taskName){
+    public TestFlow expectTaskNotStarted(String taskName){
         return assertThatTask(taskName, TestTaskVerifier::hasNotStarted);
     }
 
-    public TestFlow assertTaskRanOnPlatformThread(String taskName){
+    public TestFlow expectTaskRanOnPlatformThread(String taskName){
         return assertThatTask(taskName, TestTaskVerifier::ranOnPlatformThread);
     }
 
-    public TestFlow assertTaskRanOnVirtualThread(String taskName){
+    public TestFlow expectTaskRanOnVirtualThread(String taskName){
         return assertThatTask(taskName, TestTaskVerifier::ranOnVirtualThread);
     }
 

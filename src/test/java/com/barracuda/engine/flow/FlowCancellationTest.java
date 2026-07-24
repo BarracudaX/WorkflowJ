@@ -16,7 +16,7 @@ public class FlowCancellationTest {
                 .build()
                 .startFlow()
                 .interruptFlowAndExpectFlowPaused()
-                .assertTaskCancelled("FirstTask");
+                .expectTaskCancelled("FirstTask");
     }
 
     @Test
@@ -28,7 +28,7 @@ public class FlowCancellationTest {
                 .startFlow()
                 .assertTaskRunning("FirstTask")
                 .interruptFlowAndExpectFlowPaused()
-                .assertTaskCancelled("FirstTask")
-                .assertTaskNotStarted("SecondTask");
+                .expectTaskCancelled("FirstTask")
+                .expectTaskNotStarted("SecondTask");
     }
 }

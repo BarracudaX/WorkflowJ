@@ -70,8 +70,8 @@ public class FlowParallelTasksTest extends AbstractFlowTest{
                 .assertTaskRunning("parallelTask2")
                 .assertTaskRunning("parallelTask3")
                 .failTask("parallelTask1",new RuntimeException("FAILED"))
-                .assertTaskCancelled("parallelTask2")
-                .assertTaskCancelled("parallelTask3");
+                .expectTaskCancelled("parallelTask2")
+                .expectTaskCancelled("parallelTask3");
 
     }
 
@@ -83,7 +83,7 @@ public class FlowParallelTasksTest extends AbstractFlowTest{
                 .build()
                 .startFlow()
                 .failTask("parallelTask1",new RuntimeException("FAILED"))
-                .assertTaskNotStarted("NextTask");
+                .expectTaskNotStarted("NextTask");
 
     }
 
@@ -96,7 +96,7 @@ public class FlowParallelTasksTest extends AbstractFlowTest{
                 .build()
                 .startFlow()
                 .finishTask("parallelTask1")
-                .assertTaskNotStarted("NextTask")
+                .expectTaskNotStarted("NextTask")
                 .finishTask("parallelTask2")
                 .assertTaskRunning("NextTask");
     }

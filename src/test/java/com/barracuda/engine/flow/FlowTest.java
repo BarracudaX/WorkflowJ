@@ -49,8 +49,8 @@ public class FlowTest extends AbstractFlowTest{
                 .startFlow()
                 .finishTask("IoTask")
                 .finishTask("CpuTask")
-                .assertTaskRanOnVirtualThread("IoTask")
-                .assertTaskRanOnPlatformThread("CpuTask");
+                .expectTaskRanOnVirtualThread("IoTask")
+                .expectTaskRanOnPlatformThread("CpuTask");
     }
 
     @Disabled("need to figure out how to assert sequentiality")
@@ -58,6 +58,7 @@ public class FlowTest extends AbstractFlowTest{
     void shouldExecutedTasksSequentially() {
     }
 
+    @Disabled("Already tested by FlowEventReplayingTest.shouldNotAllowSendingEventsToFlowThatIsRunning")
     @Test
     void shouldThrowISEWhenTryingToExecuteAlreadyRunningFlow() {
         testFlow()

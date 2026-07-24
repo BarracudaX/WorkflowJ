@@ -21,17 +21,18 @@ import static com.barracuda.engine.utility.AwaitilityUtils.*;
 public final class TestTask<I> implements Task<I, Void> {
 
     public enum TaskThread {
-        VIRTUAL, PLATFORM, NONE;
+        VIRTUAL, PLATFORM, NONE
     }
-    private final AtomicReference<TestTaskState> state = new AtomicReference<>(TestTaskState.CREATED);
+    private final AtomicReference<TestTaskState> state = new AtomicReference<>(TestTaskState.READY);
 
     private final CountDownLatch latch = new CountDownLatch(1);
     private volatile RuntimeException failException;
-    private volatile Deque<TestTaskInput<I>> input_history = new ConcurrentLinkedDeque<>();
+    private final Deque<TestTaskInput<I>> input_history = new ConcurrentLinkedDeque<>();
     private final long id;
     private final String name;
-    private Deque<TaskEvent> events = new ConcurrentLinkedDeque<>();
+    private final Deque<TaskEvent> events = new ConcurrentLinkedDeque<>();
     private final Deque<Thread> thread_history = new ConcurrentLinkedDeque<>();
+
     public TestTask(long id, String name) {
         this.id = id;
         this.name = name;
@@ -124,6 +125,10 @@ public final class TestTask<I> implements Task<I, Void> {
         if (event.taskID() == id) {
             events.add(event);
         }
+    }
+
+    public String name(){
+        return name;
     }
 
     @Override
