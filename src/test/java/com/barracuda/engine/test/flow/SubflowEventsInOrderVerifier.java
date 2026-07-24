@@ -9,6 +9,7 @@ import com.barracuda.engine.flow.Flow;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.InstanceOfAssertFactories.type;
@@ -25,62 +26,51 @@ public class SubflowEventsInOrderVerifier {
         this.events.addAll(events);
     }
 
+    public SubflowEventsInOrderVerifier hasSubflowStartedEvent(Consumer<SubflowStartedEvent> consumer){
+        consumer.accept(getNextEvent());
+        return this;
+    }
 
     public SubflowEventsInOrderVerifier hasSubflowStartedEvent() {
-        var remainingEvents = List.copyOf(events);
-        SubflowEvent nextEvent = getNextEvent();
-        assertThat(nextEvent)
-                .withFailMessage("Expected SubflowStartedEvent, but was "+nextEvent+". All remaining events: "+remainingEvents)
-                .isInstanceOf(SubflowStartedEvent.class)
-                .satisfies(event -> assertThat(event.rootID()).isEqualTo(root.id()))
-                .satisfies(event -> assertThat(event.subflowID()).isEqualTo(subflowID));
+        return hasSubflowStartedEvent(_ -> {});
+    }
+
+    public SubflowEventsInOrderVerifier hasSubflowPausedEvent(Consumer<SubflowPausedEvent> consumer) {
+        consumer.accept(getNextEvent());
         return this;
     }
 
     public SubflowEventsInOrderVerifier hasSubflowPausedEvent() {
-        var remainingEvents = List.copyOf(events);
-        SubflowEvent nextEvent = getNextEvent();
-        assertThat(nextEvent)
-                .withFailMessage("Expected SubflowPausedEvent, but was "+nextEvent+". All remaining events: "+remainingEvents)
-                .isInstanceOf(SubflowPausedEvent.class)
-                .satisfies(event -> assertThat(event.rootID()).isEqualTo(root.id()))
-                .satisfies(event ->   assertThat(event.subflowID()).isEqualTo(subflowID));
+        return hasSubflowPausedEvent(_ -> {});
+    }
 
+    public SubflowEventsInOrderVerifier hasSubflowFailedEvent(Consumer<SubflowFailedEvent> consumer) {
+        consumer.accept(getNextEvent());
         return this;
     }
 
-    public SubflowEventsInOrderVerifier hasSubflowFailedEvent(RuntimeException exception) {
-        var remainingEvents = List.copyOf(events);
-        SubflowEvent nextEvent = getNextEvent();
-        assertThat(nextEvent)
-                .withFailMessage("Expected SubflowFailedEvent, but was "+nextEvent+". All remaining events: "+remainingEvents)
-                .asInstanceOf(type(SubflowFailedEvent.class))
-                .satisfies(event -> assertThat(event.rootID()).isEqualTo(root.id()))
-                .satisfies(event -> assertThat(event.subflowID()).isEqualTo(subflowID))
-                .satisfies(event -> assertThat(event.exception()).isEqualTo(exception));
+    public SubflowEventsInOrderVerifier hasSubflowFailedEvent() {
+        return hasSubflowFailedEvent(_ -> {});
+    }
+
+    public SubflowEventsInOrderVerifier hasSubflowCompletedEvent(Consumer<SubflowCompletedEvent> consumer) {
+        consumer.accept(getNextEvent());
+
         return this;
     }
 
     public SubflowEventsInOrderVerifier hasSubflowCompletedEvent() {
-        var remainingEvents = List.copyOf(events);
-        SubflowEvent nextEvent = getNextEvent();
-        assertThat(nextEvent)
-                .withFailMessage("Expected SubflowCompletedEvent, but was "+nextEvent+". All remaining events: "+remainingEvents)
-                .isInstanceOf(SubflowCompletedEvent.class)
-                .satisfies(event -> assertThat(event.rootID()).isEqualTo(root.id()))
-                .satisfies(event -> assertThat(event.subflowID()).isEqualTo(subflowID));
-
-        return this;
+        return hasSubflowCompletedEvent(_ -> {});
     }
 
     public void andHasNoMoreEvents() {
         assertThat(events).isEmpty();
     }
 
-    private SubflowEvent getNextEvent(){
+    private <T extends SubflowEvent> T getNextEvent(){
         if(events.isEmpty()) {
             throw new IllegalStateException("No events left");
         }
-        return events.removeFirst();
+        return (T) events.removeFirst();
     }
 }

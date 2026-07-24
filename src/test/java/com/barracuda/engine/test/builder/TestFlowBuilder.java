@@ -26,18 +26,21 @@ public class TestFlowBuilder{
     private final ExecutorService cpuExecutor;
     private final ExecutorService ioExecutor;
     protected final FlowBuilder builder;
-    protected final AtomicLong counter = new AtomicLong(1); // the only reason we are using atomic is for easier sharing(not thread safety).
+    protected final AtomicLong counter; // the only reason we are using atomic is for easier sharing(not thread safety).
     protected final long flowID;
+    private final String name;
 
     /**
      * Use this constructor for subflows
      */
-    TestFlowBuilder(FlowBuilder builder,ExecutorService cpuExecutor,long flowID, ExecutorService ioExecutor,InMemoryEventCapturer eventCapturer) {
+    TestFlowBuilder(FlowBuilder builder,ExecutorService cpuExecutor,long flowID, ExecutorService ioExecutor,InMemoryEventCapturer eventCapturer,AtomicLong counter,String name) {
         this.flowID = flowID;
+        this.name = name;
         this.cpuExecutor = cpuExecutor;
         this.ioExecutor = ioExecutor;
         this.builder = builder;
         this.eventCapturer = eventCapturer;
+        this.counter = counter;
         testTasks.put(Void.class,new LinkedHashMap<>()); // create entry for Void input by default
     }
 
@@ -54,7 +57,7 @@ public class TestFlowBuilder{
         eventPublisher.subscribe(eventCapturer);
         builder.eventPublisher(eventPublisher);
 
-        this(builder,cpuExecutor, 1,ioExecutor,eventCapturer);
+        this(builder,cpuExecutor, 1,ioExecutor,eventCapturer,new AtomicLong(1),null);
     }
 
     public TestFlowBuilder parallel(Consumer<TestSubflowBuilder> consumer) {
@@ -118,7 +121,7 @@ public class TestFlowBuilder{
         public TestSubflowBuilder subflow(String subflowName, Consumer<TestFlowBuilder> consumer) {
             var subflowID = counter.incrementAndGet();
             parallelFlowBuilder.subflow(subflowID,(builder) -> {
-                var newBuilder = new TestFlowBuilder((FlowBuilder) builder,cpuExecutor, subflowID, ioExecutor,eventCapturer);
+                var newBuilder = new TestFlowBuilder((FlowBuilder) builder,cpuExecutor, subflowID, ioExecutor,eventCapturer,counter,subflowName);
                 consumer.accept(newBuilder);
                 subflows.put(subflowName, newBuilder.build());
             });

@@ -24,11 +24,13 @@ public abstract class AbstractFlowBuilder<T extends AbstractFlowBuilder<T>> {
     protected final List<Function<ChainNode,ChainNode>> chainNodes = new ArrayList<>();
     protected FlowEventPublisher flowEventPublisher = new NoOpEvenPublisher();
     protected final long flowID;
+    private final long rootID;
 
-    protected AbstractFlowBuilder(long flowID, ExecutorService cpuExecutor, ExecutorService ioExecutor) {
+    protected AbstractFlowBuilder(long flowID, ExecutorService cpuExecutor, ExecutorService ioExecutor,long rootID) {
         this.cpuExecutor = cpuExecutor;
         this.ioExecutor = ioExecutor;
         this.flowID = flowID;
+        this.rootID = rootID;
     }
 
     public T eventPublisher(FlowEventPublisher flowEventPublisher) {
@@ -97,7 +99,7 @@ public abstract class AbstractFlowBuilder<T extends AbstractFlowBuilder<T>> {
         }
 
         public SubflowBuilder subflow(long subflowID, Consumer<AbstractFlowBuilder<?>> flowBuilderConsumer) {
-            var builder = new FlowBuilder(subflowID, cpuExecutor, ioExecutor).eventPublisher(new SubflowEventPublisherDecorator(subflowID,flowID,flowEventPublisher));
+            var builder = new FlowBuilder(subflowID, cpuExecutor, ioExecutor,rootID).eventPublisher(new SubflowEventPublisherDecorator(subflowID,rootID,flowEventPublisher));
             flowBuilderConsumer.accept(builder);
 
             subflows.add(builder.build());

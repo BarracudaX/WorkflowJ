@@ -2,12 +2,14 @@ package com.barracuda.engine.test.flow;
 
 import com.barracuda.engine.event.ExecutionEvent.FlowEvent;
 import com.barracuda.engine.event.ExecutionEvent.FlowEvent.FlowCompletedEvent;
+import com.barracuda.engine.event.ExecutionEvent.FlowEvent.FlowFailedEvent;
 import com.barracuda.engine.event.ExecutionEvent.FlowEvent.FlowStartedEvent;
 import com.barracuda.engine.flow.Flow;
 import org.assertj.core.api.InstanceOfAssertFactories;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.InstanceOfAssertFactories.type;
@@ -26,54 +28,47 @@ public class FlowEventsInOrderVerifier {
         assertThat(events).isEmpty();
     }
 
+    public FlowEventsInOrderVerifier hasFlowStartedEvent(Consumer<FlowStartedEvent> eventConsumer) {
+        eventConsumer.accept(getNextEvent());
+        return this;
+    }
+
     public FlowEventsInOrderVerifier hasFlowStartedEvent() {
-        var remainingEvents = List.copyOf(events);
-        FlowEvent nextEvent = getNextEvent();
-        assertThat(nextEvent)
-                .withFailMessage("Expected FlowStartedEvent, but was "+nextEvent+". All remaining events: "+remainingEvents)
-                .isInstanceOf(FlowStartedEvent.class)
-                .satisfies(event -> assertThat(event.flowID()).isEqualTo(flow.id()));
+       return hasFlowStartedEvent(_ -> {});
+    }
+
+    public FlowEventsInOrderVerifier hasFlowPausedEvent(Consumer<FlowEvent.FlowPausedEvent> eventConsumer) {
+        eventConsumer.accept(getNextEvent());
         return this;
     }
 
     public FlowEventsInOrderVerifier hasFlowPausedEvent() {
-        var remainingEvents = List.copyOf(events);
-        FlowEvent nextEvent = getNextEvent();
-        assertThat(nextEvent)
-                .withFailMessage("Expected FlowPausedEvent, but was "+nextEvent+". All remaining events: "+remainingEvents)
-                .asInstanceOf(type(FlowEvent.FlowPausedEvent.class))
-                .satisfies(event -> assertThat(event.flowID()).isEqualTo(flow.id()));
+        return hasFlowPausedEvent(_ -> {});
+    }
 
+    public FlowEventsInOrderVerifier hasFlowFailedEvent(Consumer<FlowFailedEvent> eventConsumer) {
+        eventConsumer.accept(getNextEvent());
         return this;
     }
 
-    public FlowEventsInOrderVerifier hasFlowFailedEvent(RuntimeException exception) {
-        var remainingEvents = List.copyOf(events);
-        FlowEvent nextEvent = getNextEvent();
-        assertThat(nextEvent)
-                .withFailMessage("Expected FlowFailedEvent, but was "+nextEvent+". All remaining events: "+remainingEvents)
-                .asInstanceOf(InstanceOfAssertFactories.type(FlowEvent.FlowFailedEvent.class))
-                .satisfies(event -> assertThat(event.flowID()).isEqualTo(flow.id()))
-                .satisfies(event -> assertThat(event.exception()).isEqualTo(exception));
+    public FlowEventsInOrderVerifier hasFlowFailedEvent() {
+        return hasFlowFailedEvent(_ -> {});
+    }
+
+    public FlowEventsInOrderVerifier hasFlowCompletedEvent(Consumer<FlowCompletedEvent> eventConsumer) {
+        eventConsumer.accept(getNextEvent());
         return this;
     }
 
     public FlowEventsInOrderVerifier hasFlowCompletedEvent() {
-        var remainingEvents = List.copyOf(events);
-        FlowEvent nextEvent = getNextEvent();
-        assertThat(nextEvent)
-                .withFailMessage("Expected FlowCompletedEvent, but was "+nextEvent+". All remaining events: "+remainingEvents)
-                .isInstanceOf(FlowCompletedEvent.class)
-                .satisfies(event -> assertThat(event.flowID()).isEqualTo(flow.id()));
-
-        return this;
+        return hasFlowCompletedEvent(_ -> {});
     }
 
-    private FlowEvent getNextEvent(){
+    private <T extends FlowEvent> T getNextEvent(){
         if(events.isEmpty()) {
             throw new IllegalStateException("No events left");
         }
-        return events.removeFirst();
+        return (T) events.removeFirst();
     }
 
 

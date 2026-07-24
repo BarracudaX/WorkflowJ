@@ -1,5 +1,6 @@
 package com.barracuda.engine.flow;
 
+import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 import static com.barracuda.engine.test.builder.TestFlowBuilder.testFlow;
@@ -38,7 +39,11 @@ public class TaskEventTests {
                 .startFlow()
                 .failTask("test", exception)
                 .expectFlowFailed()
-                .assertTaskEventsInOrder("test",events -> events.hasTaskStartedEvent().hasTaskFailedEvent(exception).andHasNoMoreEvents());
+                .assertTaskEventsInOrder("test",events -> events
+                        .hasTaskStartedEvent()
+                        .hasTaskFailedEvent(event -> Assertions.assertThat(event.exception()).isSameAs(exception))
+                        .andHasNoMoreEvents()
+                );
     }
 
     @Test

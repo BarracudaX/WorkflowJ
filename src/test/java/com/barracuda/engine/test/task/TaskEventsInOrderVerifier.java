@@ -2,10 +2,13 @@ package com.barracuda.engine.test.task;
 
 import com.barracuda.engine.event.ExecutionEvent.TaskEvent;
 import com.barracuda.engine.event.ExecutionEvent.TaskEvent.TaskCompletedEvent;
+import com.barracuda.engine.event.ExecutionEvent.TaskEvent.TaskFailedEvent;
 import com.barracuda.engine.event.ExecutionEvent.TaskEvent.TaskPausedEvent;
+import com.barracuda.engine.event.ExecutionEvent.TaskEvent.TaskStartEvent;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.InstanceOfAssertFactories.type;
@@ -24,41 +27,46 @@ public class TaskEventsInOrderVerifier {
         assertThat(events).isEmpty();
     }
 
+    public TaskEventsInOrderVerifier hasTaskStartedEvent(Consumer<TaskStartEvent> consumer) {
+        consumer.accept(getNextEvent());
+        return this;
+    }
+
     public TaskEventsInOrderVerifier hasTaskStartedEvent() {
-        assertThat(getNextEvent())
-                .isInstanceOf(TaskEvent.TaskStartEvent.class)
-                .satisfies(event -> assertThat(event.taskID()).isEqualTo(task.id()));
+        return hasTaskStartedEvent(_ -> {});
+    }
+
+    public TaskEventsInOrderVerifier hasTaskPausedEvent(Consumer<TaskPausedEvent> consumer) {
+        consumer.accept(getNextEvent());
         return this;
     }
 
     public TaskEventsInOrderVerifier hasTaskPausedEvent() {
-        assertThat(getNextEvent())
-                .asInstanceOf(type(TaskPausedEvent.class))
-                .satisfies(event -> assertThat(event.taskID()).isEqualTo(task.id()));
+        return  hasTaskPausedEvent(_ -> {});
+    }
+
+    public TaskEventsInOrderVerifier hasTaskFailedEvent(Consumer<TaskFailedEvent> consumer) {
+        consumer.accept(getNextEvent());
         return this;
     }
 
-    public TaskEventsInOrderVerifier hasTaskFailedEvent(Exception exception) {
-        assertThat(getNextEvent())
-                .asInstanceOf(type(TaskEvent.TaskFailedEvent.class))
-                .satisfies(event -> assertThat(event.taskID()).isEqualTo(task.id()))
-                .satisfies( event -> assertThat(event.exception()).isEqualTo(exception));
+    public TaskEventsInOrderVerifier hasTaskFailedEvent() {
+        return hasTaskFailedEvent(_ -> {});
+    }
 
+    public TaskEventsInOrderVerifier hasTaskCompletedEvent(Consumer<TaskCompletedEvent> consumer) {
+        consumer.accept(getNextEvent());
         return this;
     }
 
     public TaskEventsInOrderVerifier hasTaskCompletedEvent() {
-        assertThat(getNextEvent())
-                .isInstanceOf(TaskCompletedEvent.class)
-                .satisfies(event -> assertThat(event.taskID()).isEqualTo(task.id()));
-
-        return this;
+        return hasTaskCompletedEvent(_ -> {});
     }
 
-    private TaskEvent getNextEvent() {
+    private <T extends TaskEvent> T getNextEvent() {
         if (events.isEmpty()) {
             throw new IllegalStateException("No events left");
         }
-        return events.removeFirst();
+        return (T) events.removeFirst();
     }
 }

@@ -1,8 +1,13 @@
 package com.barracuda.engine.flow;
 
+import com.barracuda.engine.event.ExecutionEvent;
+import com.barracuda.engine.event.ExecutionEvent.SubflowEvent.SubflowCompletedEvent;
+import com.barracuda.engine.event.ExecutionEvent.SubflowEvent.SubflowStartedEvent;
+import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 import static com.barracuda.engine.test.builder.TestFlowBuilder.testFlow;
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Tests related to flow events.
@@ -39,7 +44,9 @@ public class FlowEventsTest {
                 .startFlow()
                 .failTask("test", exception)
                 .expectFlowFailed()
-                .assertFlowEventsInOrder( events -> events.hasFlowStartedEvent().hasFlowFailedEvent(exception).andHasNoMoreEvents());
+                .assertFlowEventsInOrder(events -> events.hasFlowStartedEvent()
+                        .hasFlowFailedEvent(event -> assertThat(event.exception()).isSameAs(exception))
+                        .andHasNoMoreEvents());
     }
 
     @Test
@@ -77,9 +84,53 @@ public class FlowEventsTest {
                 .finishTask("parallelTask1")
                 .interruptFlowAndExpectFlowPaused()
                 .assertSubflowEventsInOrder("Subflow1", events -> events.hasSubflowStartedEvent().hasSubflowCompletedEvent().andHasNoMoreEvents())
-                .assertSubflowEventsInOrder("Subflow2",events -> events.hasSubflowStartedEvent().hasSubflowPausedEvent().andHasNoMoreEvents())
-                .assertSubflowEventsInOrder("Subflow3",events -> events.hasSubflowStartedEvent().hasSubflowPausedEvent().andHasNoMoreEvents());
+                .assertSubflowEventsInOrder("Subflow2", events -> events.hasSubflowStartedEvent().hasSubflowPausedEvent().andHasNoMoreEvents())
+                .assertSubflowEventsInOrder("Subflow3", events -> events.hasSubflowStartedEvent().hasSubflowPausedEvent().andHasNoMoreEvents());
     }
 
 
+    @Test
+    void subflowEventsShouldHaveCorrectRootIDOfRootFlow() {
+        var flow = testFlow()
+                .parallel(parallelL1 -> {
+                    parallelL1.subflow("Subflow1", subflow1 -> {
+                        subflow1
+                                .ioTask("task1")
+                                .parallel(parallelL2 -> {
+                                    parallelL2.subflow("Subflow2", subflow2 -> {
+                                        subflow2.ioTask("task2").parallel(parallelL3 -> {
+                                            parallelL3.subflow("Subflow3", subflow3 -> {
+                                                subflow3.ioTask("task3");
+                                            });
+                                        });
+                                    });
+                                });
+                    });
+                })
+                .build()
+                .startFlow()
+                .expectTaskIsRunning("task1")
+                .finishTask("task1")
+                .expectTaskIsRunning("task2")
+                .finishTask("task2")
+                .expectTaskIsRunning("task3")
+                .finishTask("task3")
+                .expectFlowCompleted();
+
+        var rootID = flow.flowID();
+        var subflowID = flow.subflowID("Subflow3");
+
+        var verifier = flow.getSubflowEventsVerifier("Subflow3");
+        verifier.hasSubflowStartedEvent(event -> {
+            assertThat(event.rootID()).isEqualTo(rootID);
+            assertThat(event.subflowID()).isEqualTo(subflowID);
+        });
+
+        verifier.hasSubflowCompletedEvent(event -> {
+            assertThat(event.rootID()).isEqualTo(rootID);
+            assertThat(event.subflowID()).isEqualTo(subflowID);
+        });
+
+        verifier.andHasNoMoreEvents();
+    }
 }

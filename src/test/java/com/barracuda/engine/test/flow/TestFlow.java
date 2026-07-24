@@ -38,6 +38,14 @@ public class TestFlow {
         this.tasks = tasks;
     }
 
+    public long subflowID(String subflowName){
+        return getSubflowByName(subflowName).flowID();
+    }
+
+    public long flowID(){
+        return flow.id();
+    }
+
     public List<ExecutionEvent> events(){
         return eventCapturer.events();
     }
@@ -137,6 +145,10 @@ public class TestFlow {
         return assertThatTask(taskName, TestTaskVerifier::isRunning);
     }
 
+    public TestFlow expectTaskIsRunning(String taskName){
+        return assertTaskRunning(taskName);
+    }
+
     public TestFlow assertTaskCancelled(String taskName){
         return assertThatTask(taskName, TestTaskVerifier::wasCancelled);
     }
@@ -170,6 +182,11 @@ public class TestFlow {
         return this;
     }
 
+    public SubflowEventsInOrderVerifier getSubflowEventsVerifier(String subflow) {
+        long subflowID = getSubflowByName(subflow).flow.id();
+        return new SubflowEventsInOrderVerifier(flow, eventCapturer.subflowEvents(flow.id(), subflowID), subflowID);
+    }
+
     private TestTask<Void> getTestTaskByName(String taskName) {
         try {
             return Objects.requireNonNull(getConsumerTaskByName(taskName, Void.class));
@@ -196,7 +213,9 @@ public class TestFlow {
             return Objects.requireNonNull(subflows.get(subflowName), "Subflow with name " + subflowName + " not found. Configured subflows: " + subflows.keySet());
         } catch (NullPointerException ex) {
             for(var subflow : subflows.values()) {
-                subflow.getSubflowByName(subflowName);
+                try{
+                    return subflow.getSubflowByName(subflowName);
+                }catch (NullPointerException _){}
             }
             throw ex;
         }

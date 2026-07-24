@@ -12,8 +12,15 @@ import java.util.function.Function;
 
 public class FlowBuilder extends AbstractFlowBuilder<FlowBuilder> {
 
+    FlowBuilder(long flowID, ExecutorService cpuExecutor, ExecutorService ioExecutor,long rootID) {
+        super(flowID, cpuExecutor, ioExecutor,rootID);
+    }
+
+    /**
+     * Creates root flow
+     */
     public FlowBuilder(long flowID, ExecutorService cpuExecutor, ExecutorService ioExecutor) {
-        super(flowID, cpuExecutor, ioExecutor);
+        this(flowID, cpuExecutor, ioExecutor,flowID);
     }
 
     public Flow build() {
