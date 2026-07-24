@@ -4,6 +4,7 @@ import com.barracuda.engine.chain.ChainNode;
 import com.barracuda.engine.event.ExecutionEvent;
 import com.barracuda.engine.event.ExecutionEvent.CommandEvent;
 import com.barracuda.engine.event.ExecutionEvent.CommandEvent.Continue;
+import com.barracuda.engine.event.ExecutionEvent.CommandEvent.EnterReplayMode;
 import com.barracuda.engine.event.ExecutionEvent.CommandEvent.Reset;
 import com.barracuda.engine.event.ExecutionEvent.FlowEvent.FlowCompletedEvent;
 import com.barracuda.engine.event.ExecutionEvent.FlowEvent.FlowFailedEvent;
@@ -13,12 +14,9 @@ import com.barracuda.engine.event.ExecutionEvent.FlowEvent.FlowStartedEvent;
 import java.util.Objects;
 import java.util.concurrent.StructuredTaskScope;
 
-/**
- *
- * Flow instances aren't thread safe and aren't supposed to be shared between used. The thread safety of a flow is achieved through thread confinement. Despite that, the class guarantees visibility of changes.
- */
 public class FlowImpl implements Flow {
 
+    private final Object stateLock = new Object();
     private final ChainNode chainNode;
     private volatile FlowState state = FlowState.READY;
     private final long flowID;
@@ -33,10 +31,6 @@ public class FlowImpl implements Flow {
 
     @Override
     public void event(ExecutionEvent event) {
-        if (state == FlowState.FAILED || state == FlowState.COMPLETED || state == FlowState.RUNNING) {
-            throw new IllegalStateException("Flow cannot accept events due to its state: "+state+".");
-        }
-
         switch (event){
             case FlowStartedEvent _ -> {
                 if(startedEventPublished) {
@@ -61,7 +55,20 @@ public class FlowImpl implements Flow {
     private void handleCommand(CommandEvent event) {
         switch (event) {
             case Continue ev -> handleContinueCommand(ev);
+            case EnterReplayMode ev -> replayMode(ev);
             case Reset ev -> { }
+        }
+    }
+
+    private void replayMode(EnterReplayMode enterReplayMode) {
+        synchronized (stateLock) {
+            if (state == FlowState.RUNNING || state == FlowState.FAILED || state == FlowState.COMPLETED || state == FlowState.PAUSED) {
+                throw new IllegalStateException("Flow cannot enter transition state while in "+state+" state.");
+            }
+            state = FlowState.REPLAY_MODE;
+            if (chainNode != null) {
+                chainNode.event(enterReplayMode);
+            }
         }
     }
 
@@ -136,7 +143,9 @@ public class FlowImpl implements Flow {
 
     @Override
     public FlowState state() {
-        return state;
+        synchronized (stateLock) {
+            return state;
+        }
     }
 
     @Override

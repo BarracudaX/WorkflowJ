@@ -1,10 +1,11 @@
 package com.barracuda.engine.flow;
 
 import com.barracuda.engine.event.ExecutionEvent;
-import com.barracuda.engine.event.ExecutionEvent.SubflowEvent.SubflowCompletedEvent;
-import com.barracuda.engine.event.ExecutionEvent.SubflowEvent.SubflowStartedEvent;
-import org.assertj.core.api.Assertions;
+import com.barracuda.engine.event.ExecutionEvent.SubflowEvent;
+import com.barracuda.engine.test.flow.SubflowEventsInOrderVerifier;
 import org.junit.jupiter.api.Test;
+
+import java.util.stream.Stream;
 
 import static com.barracuda.engine.test.builder.TestFlowBuilder.testFlow;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -44,9 +45,11 @@ public class FlowEventsTest {
                 .startFlow()
                 .failTask("test", exception)
                 .expectFlowFailed()
-                .assertFlowEventsInOrder(events -> events.hasFlowStartedEvent()
+                .assertFlowEventsInOrder(events -> events
+                        .hasFlowStartedEvent()
                         .hasFlowFailedEvent(event -> assertThat(event.exception()).isSameAs(exception))
-                        .andHasNoMoreEvents());
+                        .andHasNoMoreEvents()
+                );
     }
 
     @Test
@@ -54,9 +57,11 @@ public class FlowEventsTest {
         //need better output for debugging/testing.
         testFlow()
                 .ioTask("task1")
-                .parallel(parallel -> parallel.subflow("Subflow1", subflow -> subflow.ioTask("parallelTask1")))
-                .parallel(parallel -> parallel.subflow("Subflow2", subflow -> subflow.ioTask("parallelTask2")))
-                .parallel(parallel -> parallel.subflow("Subflow3", subflow -> subflow.ioTask("parallelTask3")))
+                .parallel(parallel -> parallel
+                        .subflow("Subflow1", subflow -> subflow.ioTask("parallelTask1"))
+                        .subflow("Subflow2", subflow -> subflow.ioTask("parallelTask2"))
+                        .subflow("Subflow3", subflow -> subflow.ioTask("parallelTask3"))
+                )
                 .ioTask("task2")
                 .build()
                 .startFlow()
@@ -64,11 +69,10 @@ public class FlowEventsTest {
                 .finishTask("parallelTask1")
                 .interruptFlowAndExpectFlowPaused()
                 .assertFlowEventsInOrder(events -> events.hasFlowStartedEvent().hasFlowPausedEvent().andHasNoMoreEvents());
-
     }
 
     @Test
-    void shouldPublishSubflowEventsForSubflows() {
+    void shouldPublishSubflowStartedEvent() {
         testFlow()
                 .ioTask("task1")
                 .parallel(parallel -> parallel
@@ -83,11 +87,61 @@ public class FlowEventsTest {
                 .assertTaskRunning("parallelTask1")
                 .finishTask("parallelTask1")
                 .interruptFlowAndExpectFlowPaused()
+                .assertSubflowEventsInOrder("Subflow1", SubflowEventsInOrderVerifier::hasSubflowStartedEvent)
+                .assertSubflowEventsInOrder("Subflow2", SubflowEventsInOrderVerifier::hasSubflowStartedEvent)
+                .assertSubflowEventsInOrder("Subflow3", SubflowEventsInOrderVerifier::hasSubflowStartedEvent);
+    }
+
+    @Test
+    void shouldPublishSubflowCompletedEventForSubflowThatCompleted() {
+        testFlow()
+                .parallel(parallel -> parallel
+                        .subflow("Subflow1", subflow -> subflow.ioTask("parallelTask1"))
+                        .subflow("Subflow2", subflow -> subflow.ioTask("parallelTask2"))
+                        .subflow("Subflow3", subflow -> subflow.ioTask("parallelTask3"))
+                )
+                .build()
+                .startFlow()
+                .finishTask("parallelTask1")
+                .finishTask("parallelTask2")
+                .expectTaskIsRunning("parallelTask3")
                 .assertSubflowEventsInOrder("Subflow1", events -> events.hasSubflowStartedEvent().hasSubflowCompletedEvent().andHasNoMoreEvents())
+                .assertSubflowEventsInOrder("Subflow2", events -> events.hasSubflowStartedEvent().hasSubflowCompletedEvent().andHasNoMoreEvents())
+                .assertSubflowEventsInOrder("Subflow3", events -> events.hasSubflowStartedEvent().andHasNoMoreEvents());
+    }
+
+    @Test
+    void shouldPublishSubflowFailedEvent() {
+        testFlow()
+                .parallel(parallel -> parallel
+                        .subflow("Subflow1", subflow -> subflow.ioTask("parallelTask1"))
+                        .subflow("Subflow2", subflow -> subflow.ioTask("parallelTask2"))
+                        .subflow("Subflow3", subflow -> subflow.ioTask("parallelTask3"))
+                )
+                .build()
+                .startFlow()
+                .failTask("parallelTask1",new RuntimeException("FAILED"))
+                .assertSubflowEventsInOrder("Subflow1",events -> events
+                        .hasSubflowStartedEvent()
+                        .hasSubflowFailedEvent(event -> assertThat(event.exception()).isInstanceOf(RuntimeException.class).hasMessageContaining("FAILED"))
+                        .andHasNoMoreEvents()
+                );
+    }
+
+    @Test
+    void shouldPublishSubflowInterruptedEventWhenOneParallelSubflowFails() {
+        testFlow()
+                .parallel(parallel -> parallel
+                        .subflow("Subflow1", subflow -> subflow.ioTask("parallelTask1"))
+                        .subflow("Subflow2", subflow -> subflow.ioTask("parallelTask2"))
+                        .subflow("Subflow3", subflow -> subflow.ioTask("parallelTask3"))
+                )
+                .build()
+                .startFlow()
+                .failTask("parallelTask1",new RuntimeException("FAILED"))
                 .assertSubflowEventsInOrder("Subflow2", events -> events.hasSubflowStartedEvent().hasSubflowPausedEvent().andHasNoMoreEvents())
                 .assertSubflowEventsInOrder("Subflow3", events -> events.hasSubflowStartedEvent().hasSubflowPausedEvent().andHasNoMoreEvents());
     }
-
 
     @Test
     void subflowEventsShouldHaveCorrectRootIDOfRootFlow() {
@@ -98,9 +152,11 @@ public class FlowEventsTest {
                                 .ioTask("task1")
                                 .parallel(parallelL2 -> {
                                     parallelL2.subflow("Subflow2", subflow2 -> {
-                                        subflow2.ioTask("task2").parallel(parallelL3 -> {
-                                            parallelL3.subflow("Subflow3", subflow3 -> {
-                                                subflow3.ioTask("task3");
+                                        subflow2
+                                                .ioTask("task2").
+                                                parallel(parallelL3 -> {
+                                                    parallelL3.subflow("Subflow3", subflow3 -> {
+                                                        subflow3.ioTask("task3");
                                             });
                                         });
                                     });
@@ -117,20 +173,13 @@ public class FlowEventsTest {
                 .finishTask("task3")
                 .expectFlowCompleted();
 
-        var rootID = flow.flowID();
-        var subflowID = flow.subflowID("Subflow3");
+        record SubflowAndEvent(String subflowName, SubflowEvent event){ }
 
-        var verifier = flow.getSubflowEventsVerifier("Subflow3");
-        verifier.hasSubflowStartedEvent(event -> {
-            assertThat(event.rootID()).isEqualTo(rootID);
-            assertThat(event.subflowID()).isEqualTo(subflowID);
-        });
-
-        verifier.hasSubflowCompletedEvent(event -> {
-            assertThat(event.rootID()).isEqualTo(rootID);
-            assertThat(event.subflowID()).isEqualTo(subflowID);
-        });
-
-        verifier.andHasNoMoreEvents();
+        Stream.of("Subflow1","Subflow2","Subflow3")
+                .flatMap( subflow -> flow.subflowEvents(subflow).stream().map(event -> new SubflowAndEvent(subflow,event)))
+                .forEach( result -> {
+                    assertThat(result.event.rootID()).isEqualTo(flow.flowID());
+                    assertThat(result.event.subflowID()).isEqualTo(flow.subflowID(result.subflowName));
+                });
     }
 }

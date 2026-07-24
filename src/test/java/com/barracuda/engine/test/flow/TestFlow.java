@@ -2,7 +2,10 @@ package com.barracuda.engine.test.flow;
 
 import com.barracuda.engine.event.ExecutionEvent;
 import com.barracuda.engine.event.ExecutionEvent.CommandEvent.Continue;
+import com.barracuda.engine.event.ExecutionEvent.CommandEvent.EnterReplayMode;
 import com.barracuda.engine.event.ExecutionEvent.CommandEvent.Reset;
+import com.barracuda.engine.event.ExecutionEvent.FlowEvent;
+import com.barracuda.engine.event.ExecutionEvent.SubflowEvent;
 import com.barracuda.engine.event.InMemoryEventCapturer;
 import com.barracuda.engine.flow.Flow;
 import com.barracuda.engine.flow.FlowState;
@@ -13,6 +16,7 @@ import com.barracuda.engine.utility.AwaitilityUtils;
 import org.assertj.core.api.AbstractThrowableAssert;
 
 import java.time.Duration;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ExecutionException;
@@ -40,6 +44,10 @@ public class TestFlow {
         this.tasks = tasks;
     }
 
+    public List<SubflowEvent> subflowEvents(String subflowName) {
+        return eventCapturer.subflowEvents(flow.id(), subflowID(subflowName));
+    }
+
     public long subflowID(String subflowName){
         return getSubflowByName(subflowName).flowID();
     }
@@ -48,13 +56,18 @@ public class TestFlow {
         return flow.id();
     }
 
+    public TestFlow replayMode(){
+        flow.event(new EnterReplayMode());
+        return this;
+    }
+
     public TestFlow reset(){
         flow.event(new Reset());
         return this;
     }
 
     public TestFlow sendStartEvent(){
-        flow.event(new ExecutionEvent.FlowEvent.FlowStartedEvent(flow.id()));
+        flow.event(new FlowEvent.FlowStartedEvent(flow.id()));
         return this;
     }
 
@@ -130,6 +143,11 @@ public class TestFlow {
 
     public TestFlow expectFlowFailed() {
         AwaitilityUtils.waitUntilFlowFailed(flow,Duration.ofSeconds(1));
+        return this;
+    }
+
+    public TestFlow expectFlowInReplayMode(){
+        AwaitilityUtils.waitUntilFlowInReplayMode(flow,Duration.ofSeconds(1));
         return this;
     }
 

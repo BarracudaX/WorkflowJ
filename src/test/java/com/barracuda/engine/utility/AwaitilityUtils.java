@@ -1,5 +1,6 @@
 package com.barracuda.engine.utility;
 
+import com.barracuda.engine.event.ExecutionEvent;
 import com.barracuda.engine.flow.Flow;
 import com.barracuda.engine.flow.FlowState;
 import com.barracuda.engine.test.task.TestTask;
@@ -15,6 +16,13 @@ public final class AwaitilityUtils {
 
     private AwaitilityUtils() {}
 
+    public static void waitUntilFlowInReplayMode(Flow flow, Duration duration) {
+        try {
+            Awaitility.await().atMost(duration).untilAsserted(flow::state, state -> assertThat(state).isEqualTo(FlowState.REPLAY_MODE));
+        } catch (ConditionTimeoutException exception) {
+            throw new AssertionError("Failed waiting for flow to enter replay mode.Current state of the flow is "+flow.state(),exception);
+        }
+    }
 
     public static void waitUntilFlowFailed(Flow flow, Duration duration) {
         try{
