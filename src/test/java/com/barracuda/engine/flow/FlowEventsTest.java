@@ -39,7 +39,7 @@ public class FlowEventsTest {
                 .build()
                 .startFlow()
                 .finishTask("test")
-                .waitUntilCompleted();
+                .waitUntilFlowCompleted();
 
         assertThat(testFlow).flowEventsSatisfying(events -> events.nextEventIs(FlowStartedEvent.class).nextEventIs(FlowCompletedEvent.class).andHasNoMoreEvents());
     }
@@ -52,8 +52,7 @@ public class FlowEventsTest {
                 .ioTask("test")
                 .build()
                 .startFlow()
-                .failTask("test", exception)
-                .waitUntilFailed();
+                .failTask("test", exception);
 
         assertThat(testFlow).flowEventsSatisfying(events ->
                 events.nextEventIs(FlowStartedEvent.class)
@@ -168,8 +167,7 @@ public class FlowEventsTest {
                 )
                 .build()
                 .startFlow()
-                .waitUntilTaskRunningAndFailItAndWaitUntilFailed("parallelTask1", exception)
-                .waitUntilFailed();
+                .waitUntilTaskRunningAndFailItAndWaitUntilFailed("parallelTask1", exception);
 
         assertThat(testFlow).subflowEventsSatisfying("Subflow1", events ->
                 events
@@ -211,7 +209,7 @@ public class FlowEventsTest {
                 .finishTask("task2")
                 .waitUntilTaskRunning("task3")
                 .finishTask("task3")
-                .waitUntilCompleted();
+                .waitUntilFlowCompleted();
 
         record SubflowAndEvent(String subflowName, SubflowEvent event){ }
 

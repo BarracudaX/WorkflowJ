@@ -94,6 +94,7 @@ public abstract class AbstractFlowBuilder<T extends AbstractFlowBuilder<T>> {
     public class SubflowBuilder {
 
         final List<Flow> subflows = new ArrayList<>();
+        private Consumer<Flow> buildHook = _ -> {};
 
         public SubflowBuilder() {
         }
@@ -102,10 +103,15 @@ public abstract class AbstractFlowBuilder<T extends AbstractFlowBuilder<T>> {
             var builder = new FlowBuilder(subflowID, cpuExecutor, ioExecutor,rootID).eventPublisher(new SubflowEventPublisherDecorator(subflowID,rootID,flowEventPublisher));
             flowBuilderConsumer.accept(builder);
 
-            subflows.add(builder.build());
+            Flow subflow = builder.build();
+            buildHook.accept(subflow);
+            subflows.add(subflow);
 
             return this;
         }
 
+        public void onBuild(Consumer<Flow> buildHook) {
+            this.buildHook = Objects.requireNonNull(buildHook);
+        }
     }
 }

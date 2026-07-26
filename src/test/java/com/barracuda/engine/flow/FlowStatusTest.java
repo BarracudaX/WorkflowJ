@@ -16,10 +16,11 @@ public class FlowStatusTest {
 
     @Test
     void newlyCreatedFlowShouldBeInReadyState() {
-        testFlow()
+        TestFlow flow = testFlow()
                 .ioTask("Task")
-                .build()
-                .waitUntilReady();
+                .build();
+
+        assertThat(flow).isReady();
     }
 
     @Test
@@ -72,9 +73,9 @@ public class FlowStatusTest {
         var testFlow = testFlow()
                 .ioTask("task")
                 .build()
-                .replayMode();
+                .enterReplayMode();
 
-        assertThat(testFlow).enteredEventuallyReplayMode();
+        assertThat(testFlow).enteredReplayMode();
     }
 
     @Test
@@ -84,7 +85,7 @@ public class FlowStatusTest {
                 .build()
                 .startFlow();
 
-        assertThatThrownBy(testFlow::replayMode).isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(testFlow::enterReplayMode).isInstanceOf(IllegalStateException.class);
     }
 
     @Test
@@ -93,10 +94,9 @@ public class FlowStatusTest {
                 .ioTask("task")
                 .build()
                 .startFlow()
-                .failTask("task", new RuntimeException("FAILED"))
-                .waitUntilFailed();
+                .failTask("task", new RuntimeException("FAILED"));
 
-        assertThatThrownBy(testFlow::replayMode).isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(testFlow::enterReplayMode).isInstanceOf(IllegalStateException.class);
     }
 
     @Test
@@ -106,9 +106,9 @@ public class FlowStatusTest {
                 .build()
                 .startFlow()
                 .finishTask("task")
-                .waitUntilCompleted();
+                .waitUntilFlowCompleted();
 
-        assertThatThrownBy(testFlow::replayMode).isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(testFlow::enterReplayMode).isInstanceOf(IllegalStateException.class);
     }
 
     @Test
@@ -120,7 +120,7 @@ public class FlowStatusTest {
                 .interruptFlow()
                 .waitUntilPaused();
 
-        assertThatThrownBy(testFlow::replayMode).isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(testFlow::enterReplayMode).isInstanceOf(IllegalStateException.class);
     }
 
     @Disabled("Currently not allowed.")
@@ -129,7 +129,7 @@ public class FlowStatusTest {
         Assertions.assertThatCode(() -> testFlow()
                 .ioTask("task")
                 .build()
-                .replayMode()
-                .replayMode()).doesNotThrowAnyException();
+                .enterReplayMode()
+                .enterReplayMode()).doesNotThrowAnyException();
     }
 }

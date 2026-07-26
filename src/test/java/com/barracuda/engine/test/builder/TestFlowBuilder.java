@@ -121,14 +121,16 @@ public class TestFlowBuilder{
         public TestSubflowBuilder subflow(String subflowName, Consumer<TestFlowBuilder> consumer) {
             var subflowID = counter.incrementAndGet();
             parallelFlowBuilder.subflow(subflowID,(builder) -> {
-                var newBuilder = new TestFlowBuilder((FlowBuilder) builder,cpuExecutor, subflowID, ioExecutor,eventCapturer,counter,subflowName);
+                var newBuilder = new TestFlowBuilder((FlowBuilder)builder,cpuExecutor, subflowID, ioExecutor,eventCapturer,counter,subflowName);
+
                 consumer.accept(newBuilder);
-                subflows.put(subflowName, newBuilder.build());
+
+                parallelFlowBuilder.onBuild(flow -> subflows.put(subflowName,new TestFlow(eventCapturer,flow,newBuilder.subflows,newBuilder.testTasks)));
+                //bug(we create a new instance instead of using the one created by the original builder
+//                subflows.put(subflowName, newBuilder.build());
             });
             return this;
         }
-
-
 
     }
 

@@ -17,6 +17,7 @@ import static com.barracuda.engine.utility.AwaitilityUtils.*;
 /**
  * A task that blocks on a latch that can be asked to either finish normally or with an exception.
  * Note that before calling finish or fail, use waiUntilRunning to verify that the task runs; otherwise, an IllegalStateException will be thrown because the task isn't running.
+ * This class is meant for testing purposes only. Note that this class isn't how tasks typically should be implemented; specifically, tasks shouldn't carry any state that is relevant to the execution of their logic.
  */
 public final class TestTask<I> implements Task<I, Void> {
 

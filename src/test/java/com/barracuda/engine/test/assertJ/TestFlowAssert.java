@@ -4,6 +4,7 @@ import com.barracuda.engine.event.ExecutionEvent;
 import com.barracuda.engine.event.ExecutionEvent.FlowEvent;
 import com.barracuda.engine.event.ExecutionEvent.SubflowEvent;
 import com.barracuda.engine.event.ExecutionEvent.TaskEvent;
+import com.barracuda.engine.flow.FlowStatus;
 import com.barracuda.engine.test.flow.TestFlow;
 import com.barracuda.engine.test.task.TestTask;
 import com.barracuda.engine.test.task.TestTaskState;
@@ -38,12 +39,22 @@ public class TestFlowAssert extends AbstractAssert<TestFlowAssert, TestFlow> {
         return run(() -> "Expected the flow to have failed with " + exception, () -> Assertions.assertThatThrownBy(() -> actual.getFlowTask().get()).hasCause(exception));
     }
 
+    public TestFlowAssert hasEventuallyFailed(){
+        run(() -> "Failed waiting for the flow to fail.", () -> AwaitilityUtils.waitUntilFlowFailed(actual.getFlow(), Duration.ofSeconds(1)));
+
+        return this;
+    }
+
     public TestFlowAssert isEventuallyPaused(){
         return run(() -> "Expected the flow to pause.", () -> AwaitilityUtils.waitUntilFlowPaused(actual.getFlow(),Duration.ofSeconds(1)));
     }
 
-    public TestFlowAssert enteredEventuallyReplayMode(){
-        return run(() -> "Expected the flow to enter replay mode.", () -> AwaitilityUtils.waitUntilFlowInReplayMode(actual.getFlow(),Duration.ofSeconds(1)));
+    public TestFlowAssert enteredReplayMode(){
+        return run(() -> "Expected the flow have entered replay mode.", () -> Assertions.assertThat(actual.getFlow().status()).isEqualTo(FlowStatus.REPLAY_MODE));
+    }
+
+    public TestFlowAssert isReady(){
+        return run(() -> "Expected the flow to be in READY state, but wasn't.", () -> Assertions.assertThat(actual.getFlow().status()).isEqualTo(FlowStatus.READY));
     }
 
     public TestFlowAssert hasTaskSatisfying(String taskName, Consumer<TestTaskAssert> taskVerifier) {

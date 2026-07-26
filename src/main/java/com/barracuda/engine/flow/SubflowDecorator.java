@@ -36,8 +36,8 @@ public class SubflowDecorator implements Flow {
     }
 
     @Override
-    public FlowStatus state() {
-        return subflow.state();
+    public FlowStatus status() {
+        return subflow.status();
     }
 
     @Override

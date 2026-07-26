@@ -14,24 +14,20 @@ public final class AwaitilityUtils {
 
     private AwaitilityUtils() {}
 
-    public static void waitUntilFlowInReplayMode(Flow flow, Duration duration) {
-        Awaitility.await().atMost(duration).untilAsserted(flow::state, state -> assertThat(state).isEqualTo(FlowStatus.REPLAY_MODE));
-    }
-
     public static void waitUntilFlowFailed(Flow flow, Duration duration) {
-        Awaitility.await().atMost(duration).untilAsserted(flow::state, state -> assertThat(state).isEqualTo(FlowStatus.FAILED));
+        Awaitility.await().atMost(duration).untilAsserted(flow::status, state -> assertThat(state).isEqualTo(FlowStatus.FAILED));
     }
 
     public static void waitUntilFlowRunning(Flow flow,Duration duration) {
-        Awaitility.await().atMost(duration).untilAsserted(flow::state,state -> assertThat(state).isEqualTo(FlowStatus.RUNNING));
+        Awaitility.await().atMost(duration).untilAsserted(flow::status, state -> assertThat(state).isEqualTo(FlowStatus.RUNNING));
     }
 
     public static void waitUntilFlowPaused(Flow flow,Duration duration) {
-        Awaitility.await().atMost(duration).untilAsserted(flow::state,state -> assertThat(state).isEqualTo(FlowStatus.PAUSED));
+        Awaitility.await().atMost(duration).untilAsserted(flow::status, state -> assertThat(state).isEqualTo(FlowStatus.PAUSED));
      }
 
     public static void waitUntilFlowCompleted(Flow flow, Duration duration) {
-        Awaitility.await().atMost(duration).untilAsserted(flow::state, state -> assertThat(state).isEqualTo(FlowStatus.COMPLETED));
+        Awaitility.await().atMost(duration).untilAsserted(flow::status, state -> assertThat(state).isEqualTo(FlowStatus.COMPLETED));
     }
 
     public static void waitUntilTestTaskIsRunning(TestTask task, Duration duration) {

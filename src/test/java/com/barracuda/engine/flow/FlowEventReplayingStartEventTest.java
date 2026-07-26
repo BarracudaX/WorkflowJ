@@ -1,10 +1,13 @@
 package com.barracuda.engine.flow;
 
+import com.barracuda.engine.event.ExecutionEvent;
+import com.barracuda.engine.event.ExecutionEvent.FlowEvent.FlowPausedEvent;
 import com.barracuda.engine.event.ExecutionEvent.FlowEvent.FlowStartedEvent;
 import com.barracuda.engine.test.flow.TestFlow;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
+import static com.barracuda.engine.test.assertJ.CustomAssertions.assertThat;
 import static com.barracuda.engine.test.builder.TestFlowBuilder.testFlow;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -17,8 +20,8 @@ public class FlowEventReplayingStartEventTest {
         testFlow()
                 .ioTask("task")
                 .build()
-                .replayMode() /* enter replay mode */
-                .sendStartEvent();
+                .enterReplayMode() /* enter replay mode */
+                .sendFlowStartedEvent();
     }
 
     @Test
@@ -28,9 +31,9 @@ public class FlowEventReplayingStartEventTest {
                 .build()
                 .startFlow()
                 .finishTask("task")
-                .waitUntilCompleted();
+                .waitUntilFlowCompleted();
 
-        assertThatThrownBy(testFlow::sendStartEvent).isInstanceOf(IllegalStateException.class).hasMessageContaining("Flow cannot accept events");
+        assertThatThrownBy(testFlow::sendFlowStartedEvent).isInstanceOf(IllegalStateException.class).hasMessageContaining("Flow cannot accept events");
     }
 
     @Test
@@ -40,7 +43,7 @@ public class FlowEventReplayingStartEventTest {
                 .build()
                 .startFlow();
 
-        assertThatThrownBy(testFlow::sendStartEvent).isInstanceOf(IllegalStateException.class).hasMessageContaining("Flow cannot accept events");
+        assertThatThrownBy(testFlow::sendFlowStartedEvent).isInstanceOf(IllegalStateException.class).hasMessageContaining("Flow cannot accept events");
     }
 
     @Test
@@ -49,20 +52,18 @@ public class FlowEventReplayingStartEventTest {
                 .ioTask("task")
                 .build()
                 .startFlow()
-                .failTask("task", new RuntimeException("FAILED"))
-                .waitUntilFailed();
+                .failTask("task", new RuntimeException("FAILED"));
 
-        assertThatThrownBy(testFlow::sendStartEvent).isInstanceOf(IllegalStateException.class).hasMessageContaining("Flow cannot accept events");
+        assertThatThrownBy(testFlow::sendFlowStartedEvent).isInstanceOf(IllegalStateException.class).hasMessageContaining("Flow cannot accept events");
     }
 
     @Test
     void shouldNotAllowSendingFlowStartEventToFlowThatIsInReadyState() {
         TestFlow testFlow = testFlow()
                 .ioTask("task")
-                .build()
-                .waitUntilReady();
+                .build();
 
-        assertThatThrownBy(testFlow::sendStartEvent).isInstanceOf(IllegalStateException.class).hasMessageContaining("Flow cannot accept events");
+        assertThatThrownBy(testFlow::sendFlowStartedEvent).isInstanceOf(IllegalStateException.class).hasMessageContaining("Flow cannot accept events");
     }
 
     @Test
@@ -74,7 +75,7 @@ public class FlowEventReplayingStartEventTest {
                 .interruptFlow()
                 .waitUntilPaused();
 
-        assertThatThrownBy(testFlow::sendStartEvent).isInstanceOf(IllegalStateException.class).hasMessageContaining("Flow cannot accept events");
+        assertThatThrownBy(testFlow::sendFlowStartedEvent).isInstanceOf(IllegalStateException.class).hasMessageContaining("Flow cannot accept events");
     }
 
     @Test
@@ -82,10 +83,10 @@ public class FlowEventReplayingStartEventTest {
         TestFlow testFlow = testFlow()
                 .ioTask("task")
                 .build()
-                .replayMode() /* enter replay mode */
-                .sendStartEvent();
+                .enterReplayMode() /* enter replay mode */
+                .sendFlowStartedEvent();
 
-        assertThatThrownBy(testFlow::sendStartEvent).isInstanceOf(IllegalStateException.class).hasMessageContaining("Duplicate");
+        assertThatThrownBy(testFlow::sendFlowStartedEvent).isInstanceOf(IllegalStateException.class).hasMessageContaining("Duplicate");
     }
 
     @Test
@@ -93,13 +94,33 @@ public class FlowEventReplayingStartEventTest {
         TestFlow flow = testFlow()
                 .ioTask("task")
                 .build()
-                .replayMode()
-                .sendStartEvent();
+                .enterReplayMode()
+                .sendFlowStartedEvent();
 
         var unrelatedStartFlowEvent = new FlowStartedEvent(flow.flowID() + 1);
 
         // because start event was already sent, second one should throw an exception. But because it's unrelated, it doesn't. Need a better way to figure out if the event was handled or not.
         assertThatCode(() -> flow.sendEvent(unrelatedStartFlowEvent)).doesNotThrowAnyException();
+    }
+
+    @Test
+    void shouldNotPublishFlowStartEventWhenItHasBeenReplayed() {
+        TestFlow testFlow = testFlow()
+                .ioTask("task")
+                .build()
+                .startFlow()
+                .interruptFlow();
+
+        assertThat(testFlow).flowEventsSatisfying(events -> events.nextEventIs(FlowStartedEvent.class).nextEventIs(FlowPausedEvent.class).andHasNoMoreEvents());
+
+        testFlow
+                .reset()
+                .enterReplayMode()
+                .sendFlowStartedEvent()
+                .prepare()
+                .startFlow();
+
+        assertThat(testFlow).flowEventsSatisfying(events -> events.nextEventIs(FlowStartedEvent.class).nextEventIs(FlowPausedEvent.class).andHasNoMoreEvents());
     }
 
     @Disabled("TODO")

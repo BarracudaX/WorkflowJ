@@ -5,6 +5,7 @@ import com.barracuda.engine.event.ExecutionEvent;
 import com.barracuda.engine.event.ExecutionEvent.CommandEvent;
 import com.barracuda.engine.event.ExecutionEvent.CommandEvent.Continue;
 import com.barracuda.engine.event.ExecutionEvent.CommandEvent.EnterReplayMode;
+import com.barracuda.engine.event.ExecutionEvent.CommandEvent.Prepare;
 import com.barracuda.engine.event.ExecutionEvent.CommandEvent.Reset;
 import com.barracuda.engine.event.ExecutionEvent.FlowEvent.FlowCompletedEvent;
 import com.barracuda.engine.event.ExecutionEvent.FlowEvent.FlowFailedEvent;
@@ -16,30 +17,29 @@ import java.util.concurrent.StructuredTaskScope;
 
 public class FlowImpl implements Flow {
 
-    private final Object stateLock = new Object();
-    private final ChainNode chainNode;
-    private volatile FlowStatus state = FlowStatus.READY;
+    private final ChainNode nextNode;
+    private volatile FlowStatus status = FlowStatus.READY;
     private final long flowID;
     private final FlowContext context;
     private volatile boolean startedEventPublished = false;
 
-    public FlowImpl(ChainNode chainNode, FlowContext context,long flowID) {
+    public FlowImpl(ChainNode nextNode, FlowContext context, long flowID) {
         this.context = Objects.requireNonNull(context);
-        this.chainNode = chainNode;
+        this.nextNode = nextNode;
         this.flowID = flowID;
     }
 
     @Override
     public void event(ExecutionEvent event) {
 
-        switch (event){
+        switch (event) {
             case FlowStartedEvent ev -> handleStartEvent(ev);
-            case FlowCompletedEvent _ -> state = FlowStatus.COMPLETED; // already completed.
+            case FlowCompletedEvent _ -> status = FlowStatus.COMPLETED; // already completed.
             case FlowFailedEvent ev -> {
-                state = FlowStatus.FAILED;
+                status = FlowStatus.FAILED;
                 throw ev.exception();
             }
-            case FlowPausedEvent _ -> state = FlowStatus.PAUSED;
+            case FlowPausedEvent _ -> status = FlowStatus.PAUSED;
             case CommandEvent command -> handleCommand(command);
             default -> propagateEvent(event);
         }
@@ -53,13 +53,11 @@ public class FlowImpl implements Flow {
 
         sb.append("\n").append(output.getTab()).append("[Flow]");
 
-        synchronized (stateLock) {
-            sb.append("\n").append(output.getTab()).append("State:").append(state);
-        }
+        sb.append("\n").append(output.getTab()).append("Status:").append(status);
 
-        if (chainNode != null) {
+        if (nextNode != null) {
             sb.append("\n").append(output.getTab()).append("Next Node:");
-            chainNode.prettyPrint(output);
+            nextNode.prettyPrint(output);
         }
 
         output.decreaseLevel();
@@ -67,75 +65,94 @@ public class FlowImpl implements Flow {
 
     private void handleStartEvent(FlowStartedEvent startedEvent) {
 
-        if(startedEvent.flowID() != flowID){
+        if (startedEvent.flowID() != flowID) {
             propagateEvent(startedEvent);
-            return ;
+            return;
         }
 
-        synchronized (stateLock) {
+        verifyCanAcceptEvents();
 
-            if (state != FlowStatus.REPLAY_MODE) {
-                throw new IllegalStateException("Flow cannot accept events due to it being in the "+state+" state.");
-            }
+        if (startedEventPublished) {
+            throw new IllegalStateException("Duplicate flow started event.");
+        }
 
-            if(startedEventPublished) {
-                throw new IllegalStateException("Duplicate flow started event.");
-            }
+        startedEventPublished = true;
 
-            startedEventPublished = true;
+        if (nextNode != null) {
+            nextNode.event(startedEvent);
+        }
+    }
 
-            if (chainNode != null) {
-                chainNode.event(startedEvent);
-            }
+    private void verifyCanAcceptEvents() {
+        if (status != FlowStatus.REPLAY_MODE) {
+            throw new IllegalStateException("Flow cannot accept events due to it being in the " + status + " state.");
         }
     }
 
     private void handleCommand(CommandEvent event) {
         switch (event) {
             case Continue ev -> handleContinueCommand(ev);
-            case EnterReplayMode ev -> replayMode(ev);
-            case Reset ev -> { }
+            case EnterReplayMode ev -> enterReplayMode(ev);
+            case Reset ev -> reset(ev);
+            case Prepare prepare -> prepare(prepare);
         }
     }
 
-    private void replayMode(EnterReplayMode enterReplayMode) {
-        synchronized (stateLock) {
-            if (state != FlowStatus.READY) {
-                throw new IllegalStateException("Flow cannot enter transition state while in "+state+" state.");
-            }
-            state = FlowStatus.REPLAY_MODE;
-            if (chainNode != null) {
-                chainNode.event(enterReplayMode);
-            }
+    private void prepare(Prepare prepare) {
+        if (status != FlowStatus.REPLAY_MODE) {
+            throw new IllegalStateException("Cannot prepare flow because of its current status " + status);
+        }
+        if (nextNode != null) {
+            nextNode.event(prepare);
+        }
+        status = FlowStatus.READY;
+    }
+
+    private void reset(Reset reset) {
+        if (status == FlowStatus.RUNNING) {
+            throw new IllegalStateException("Cannot reset flow that is currently running.");
+        }
+        propagateEvent(reset);
+        status = FlowStatus.READY;
+        startedEventPublished = false;
+    }
+
+    private void enterReplayMode(EnterReplayMode enterReplayMode) {
+        if (status != FlowStatus.READY) {
+            throw new IllegalStateException("Flow cannot enter replay mode while in " + status + " state.");
+        }
+        status = FlowStatus.REPLAY_MODE;
+        if (nextNode != null) {
+            nextNode.event(enterReplayMode);
         }
     }
 
     private void handleContinueCommand(Continue continueEvent) {
-        if(!startedEventPublished) {
+        if (!startedEventPublished) {
             context.flowEventPublisher().publish(new FlowStartedEvent(flowID));
             startedEventPublished = true;
-            state = FlowStatus.RUNNING;
         }
 
-        if (state != FlowStatus.RUNNING) {
-            throw new IllegalStateException("Cannot continue a flow that's in "+state+" state.");
+        if (status != FlowStatus.READY) {
+            throw new IllegalStateException("Cannot continue a flow that's in " + status + " state.");
         }
+        status = FlowStatus.RUNNING;
 
         propagateEvent(continueEvent);
 
         context.flowEventPublisher().publish(new FlowCompletedEvent(flowID));
-        state = FlowStatus.COMPLETED;
+        status = FlowStatus.COMPLETED;
     }
 
-    private void propagateEvent(ExecutionEvent event){
+    private void propagateEvent(ExecutionEvent event) {
 
-        if(chainNode == null) {
+        if (nextNode == null) {
             return;
         }
 
         ScopedValue.where(FLOW_CONTEXT, context).run(() -> {
-            try (var scope = StructuredTaskScope.open()){
-                scope.fork(() -> chainNode.event(event));
+            try (var scope = StructuredTaskScope.open()) {
+                scope.fork(() -> nextNode.event(event));
 
                 scope.join();
             } catch (Exception e) {
@@ -144,46 +161,44 @@ public class FlowImpl implements Flow {
         });
     }
 
-    private void handle(Throwable exception){
+    private void handle(Throwable exception) {
         switch (exception) {
             case FlowInterruptedException ex -> interrupted(ex);
-            case InterruptedException ex -> interrupted(new FlowInterruptedException("Flow Interrupted",ex));
+            case InterruptedException ex -> interrupted(new FlowInterruptedException("Flow Interrupted", ex));
             case StructuredTaskScope.FailedException ex -> handle(ex.getCause());
             case RuntimeException ex -> failed(ex);
             default -> failed(new RuntimeException(exception));
         }
     }
 
-    private void interrupted(FlowInterruptedException ex){
+    private void interrupted(FlowInterruptedException ex) {
         Thread.currentThread().interrupt();
-        assert state == FlowStatus.RUNNING;
+        assert status == FlowStatus.RUNNING;
 
-        if(state != FlowStatus.RUNNING) {
-            throw new IllegalStateException("Cannot interrupt a flow that's in "+state+" state.");
+        if (status != FlowStatus.RUNNING) {
+            throw new IllegalStateException("Cannot interrupt a flow that's in " + status + " state.");
         }
 
-        state = FlowStatus.PAUSED;
+        status = FlowStatus.PAUSED;
         context.flowEventPublisher().publish(new FlowPausedEvent(flowID));
         throw ex;
     }
 
     private void failed(RuntimeException ex) {
-        assert state == FlowStatus.RUNNING;
+        assert status == FlowStatus.RUNNING;
 
-        if(state != FlowStatus.RUNNING) {
-            throw new IllegalStateException("Not running flow failed with exception",ex);
+        if (status != FlowStatus.RUNNING) {
+            throw new IllegalStateException("Not running flow failed with exception", ex);
         }
-        state = FlowStatus.FAILED;
-        context.flowEventPublisher().publish(new FlowFailedEvent(flowID,ex));
+        status = FlowStatus.FAILED;
+        context.flowEventPublisher().publish(new FlowFailedEvent(flowID, ex));
 
         throw ex;
     }
 
     @Override
-    public FlowStatus state() {
-        synchronized (stateLock) {
-            return state;
-        }
+    public FlowStatus status() {
+        return status;
     }
 
     @Override

@@ -10,6 +10,8 @@ public sealed interface ExecutionEvent {
         record Reset() implements CommandEvent{}
 
         record EnterReplayMode() implements CommandEvent{ }
+
+        record Prepare() implements CommandEvent{ }
     }
 
     sealed interface SubflowEvent extends ExecutionEvent{

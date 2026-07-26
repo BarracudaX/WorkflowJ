@@ -3,13 +3,14 @@ package com.barracuda.engine.test.flow;
 import com.barracuda.engine.event.ExecutionEvent;
 import com.barracuda.engine.event.ExecutionEvent.CommandEvent.Continue;
 import com.barracuda.engine.event.ExecutionEvent.CommandEvent.EnterReplayMode;
+import com.barracuda.engine.event.ExecutionEvent.CommandEvent.Prepare;
+import com.barracuda.engine.event.ExecutionEvent.CommandEvent.Reset;
 import com.barracuda.engine.event.ExecutionEvent.FlowEvent;
 import com.barracuda.engine.event.ExecutionEvent.SubflowEvent;
 import com.barracuda.engine.event.ExecutionEvent.TaskEvent;
 import com.barracuda.engine.event.InMemoryEventCapturer;
 import com.barracuda.engine.flow.Flow;
 import com.barracuda.engine.flow.FlowPrettyOutput;
-import com.barracuda.engine.flow.FlowStatus;
 import com.barracuda.engine.test.task.TestTask;
 import com.barracuda.engine.utility.AwaitilityUtils;
 import lombok.Getter;
@@ -45,6 +46,20 @@ public class TestFlow {
         this.tasks = tasks;
     }
 
+    public TestFlow subflow(String subflowName) {
+        try {
+            return Objects.requireNonNull(subflows.get(subflowName), "No subflow found with name " + subflowName);
+        } catch (NullPointerException e) {
+            for (var subflow : subflows.values()) {
+                try {
+                    return subflow.subflow(subflowName);
+                } catch (NullPointerException _) {
+                }
+            }
+            throw e;
+        }
+    }
+
     public List<SubflowEvent> subflowEvents(String subflowName) {
         return eventCapturer.subflowEvents(flow.id(), subflowID(subflowName));
     }
@@ -61,9 +76,13 @@ public class TestFlow {
         return flow.id();
     }
 
-    public TestFlow replayMode(){
+    public TestFlow enterReplayMode(){
         flow.event(new EnterReplayMode());
-        runCatching(() -> AwaitilityUtils.waitUntilFlowInReplayMode(flow,Duration.ofSeconds(1)));
+        return this;
+    }
+
+    public TestFlow prepare(){
+        flow.event(new Prepare());
         return this;
     }
 
@@ -72,8 +91,13 @@ public class TestFlow {
         return this;
     }
 
-    public TestFlow sendStartEvent(){
+    public TestFlow sendFlowStartedEvent(){
         flow.event(new FlowEvent.FlowStartedEvent(flow.id()));
+        return this;
+    }
+
+    public TestFlow reset(){
+        flow.event(new Reset());
         return this;
     }
 
@@ -103,7 +127,9 @@ public class TestFlow {
     public TestFlow waitUntilTaskRunningAndFailItAndWaitUntilFailed(String taskName, RuntimeException exception) {
         waitUntilTaskRunning(taskName);
         failTask(taskName, exception);
-        return waitUntilTaskFailed(taskName);
+        waitUntilTaskFailed(taskName);
+
+        return runCatching(() -> AwaitilityUtils.waitUntilFlowFailed(flow,Duration.ofSeconds(1)));
     }
 
     public TestFlow failTask(String taskName, RuntimeException exception) {
@@ -124,20 +150,12 @@ public class TestFlow {
         return this;
     }
 
-    public TestFlow waitUntilReady(){
-        return runCatching(() -> assertThat(flow.state()).as(this::context).isEqualTo(FlowStatus.READY));
-    }
-
     public TestFlow waitUntilPaused(){
         return runCatching(() -> AwaitilityUtils.waitUntilFlowPaused(flow, Duration.ofSeconds(1)));
     }
 
-    public TestFlow waitUntilCompleted() {
+    public TestFlow waitUntilFlowCompleted() {
         return runCatching(() -> AwaitilityUtils.waitUntilFlowCompleted(flow, Duration.ofSeconds(1)));
-    }
-
-    public TestFlow waitUntilFailed() {
-        return runCatching(() -> AwaitilityUtils.waitUntilFlowFailed(flow,Duration.ofSeconds(1)));
     }
 
     private TestFlow runCatching(Runnable runnable){
