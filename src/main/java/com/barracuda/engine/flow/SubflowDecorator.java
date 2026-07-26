@@ -22,10 +22,10 @@ public class SubflowDecorator implements Flow {
     @Override
     public void event(ExecutionEvent event) {
         switch (event){
-            case SubflowStartedEvent(_, long subflowID) -> subflow.event(new FlowStartedEvent(subflowID));
-            case SubflowCompletedEvent(_, long subflowID) -> subflow.event(new FlowCompletedEvent(subflowID));
-            case SubflowPausedEvent(_,long subflowID) -> subflow.event(new FlowPausedEvent(subflowID));
-            case SubflowFailedEvent(_, long subflowID, RuntimeException exception) -> subflow.event(new FlowFailedEvent(subflowID, exception));
+            case SubflowStartedEvent(_, long subflowID) when subflowID == subflow.id() -> subflow.event(new FlowStartedEvent(subflowID));
+            case SubflowCompletedEvent(_, long subflowID) when subflowID == subflow.id() -> subflow.event(new FlowCompletedEvent(subflowID));
+            case SubflowPausedEvent(_,long subflowID) when subflowID == subflow.id() -> subflow.event(new FlowPausedEvent(subflowID));
+            case SubflowFailedEvent(_, RuntimeException exception, long subflowID) when subflowID == subflow.id() -> subflow.event(new FlowFailedEvent(subflowID, exception));
             default -> subflow.event(event);
         }
     }

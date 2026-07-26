@@ -23,7 +23,7 @@ public sealed interface ExecutionEvent {
 
         record SubflowCompletedEvent(long rootID, long subflowID) implements SubflowEvent{ }
 
-        record SubflowFailedEvent(long rootID, long subflowID, RuntimeException exception) implements SubflowEvent{ }
+        record SubflowFailedEvent(long rootID, RuntimeException exception, long subflowID) implements SubflowEvent{ }
 
         record SubflowPausedEvent(long rootID, long subflowID) implements SubflowEvent{ }
     }
