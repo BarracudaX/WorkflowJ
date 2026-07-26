@@ -9,7 +9,7 @@ import com.barracuda.engine.event.ExecutionEvent.TaskEvent;
 import com.barracuda.engine.event.InMemoryEventCapturer;
 import com.barracuda.engine.flow.Flow;
 import com.barracuda.engine.flow.FlowPrettyOutput;
-import com.barracuda.engine.flow.FlowState;
+import com.barracuda.engine.flow.FlowStatus;
 import com.barracuda.engine.test.task.TestTask;
 import com.barracuda.engine.utility.AwaitilityUtils;
 import lombok.Getter;
@@ -125,7 +125,7 @@ public class TestFlow {
     }
 
     public TestFlow waitUntilReady(){
-        return runCatching(() -> assertThat(flow.state()).as(this::context).isEqualTo(FlowState.READY));
+        return runCatching(() -> assertThat(flow.state()).as(this::context).isEqualTo(FlowStatus.READY));
     }
 
     public TestFlow waitUntilPaused(){

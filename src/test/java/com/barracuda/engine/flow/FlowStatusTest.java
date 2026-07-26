@@ -12,7 +12,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 /**
  * Tests related to flow's state.
  */
-public class FlowStateTest {
+public class FlowStatusTest {
 
     @Test
     void newlyCreatedFlowShouldBeInReadyState() {

@@ -18,7 +18,7 @@ public class FlowImpl implements Flow {
 
     private final Object stateLock = new Object();
     private final ChainNode chainNode;
-    private volatile FlowState state = FlowState.READY;
+    private volatile FlowStatus state = FlowStatus.READY;
     private final long flowID;
     private final FlowContext context;
     private volatile boolean startedEventPublished = false;
@@ -34,12 +34,12 @@ public class FlowImpl implements Flow {
 
         switch (event){
             case FlowStartedEvent ev -> handleStartEvent(ev);
-            case FlowCompletedEvent _ -> state = FlowState.COMPLETED; // already completed.
+            case FlowCompletedEvent _ -> state = FlowStatus.COMPLETED; // already completed.
             case FlowFailedEvent ev -> {
-                state = FlowState.FAILED;
+                state = FlowStatus.FAILED;
                 throw ev.exception();
             }
-            case FlowPausedEvent _ -> state = FlowState.PAUSED;
+            case FlowPausedEvent _ -> state = FlowStatus.PAUSED;
             case CommandEvent command -> handleCommand(command);
             default -> propagateEvent(event);
         }
@@ -74,7 +74,7 @@ public class FlowImpl implements Flow {
 
         synchronized (stateLock) {
 
-            if (state != FlowState.REPLAY_MODE) {
+            if (state != FlowStatus.REPLAY_MODE) {
                 throw new IllegalStateException("Flow cannot accept events due to it being in the "+state+" state.");
             }
 
@@ -100,10 +100,10 @@ public class FlowImpl implements Flow {
 
     private void replayMode(EnterReplayMode enterReplayMode) {
         synchronized (stateLock) {
-            if (state != FlowState.READY) {
+            if (state != FlowStatus.READY) {
                 throw new IllegalStateException("Flow cannot enter transition state while in "+state+" state.");
             }
-            state = FlowState.REPLAY_MODE;
+            state = FlowStatus.REPLAY_MODE;
             if (chainNode != null) {
                 chainNode.event(enterReplayMode);
             }
@@ -114,17 +114,17 @@ public class FlowImpl implements Flow {
         if(!startedEventPublished) {
             context.flowEventPublisher().publish(new FlowStartedEvent(flowID));
             startedEventPublished = true;
-            state = FlowState.RUNNING;
+            state = FlowStatus.RUNNING;
         }
 
-        if (state != FlowState.RUNNING) {
+        if (state != FlowStatus.RUNNING) {
             throw new IllegalStateException("Cannot continue a flow that's in "+state+" state.");
         }
 
         propagateEvent(continueEvent);
 
         context.flowEventPublisher().publish(new FlowCompletedEvent(flowID));
-        state = FlowState.COMPLETED;
+        state = FlowStatus.COMPLETED;
     }
 
     private void propagateEvent(ExecutionEvent event){
@@ -156,31 +156,31 @@ public class FlowImpl implements Flow {
 
     private void interrupted(FlowInterruptedException ex){
         Thread.currentThread().interrupt();
-        assert state == FlowState.RUNNING;
+        assert state == FlowStatus.RUNNING;
 
-        if(state != FlowState.RUNNING) {
+        if(state != FlowStatus.RUNNING) {
             throw new IllegalStateException("Cannot interrupt a flow that's in "+state+" state.");
         }
 
-        state = FlowState.PAUSED;
+        state = FlowStatus.PAUSED;
         context.flowEventPublisher().publish(new FlowPausedEvent(flowID));
         throw ex;
     }
 
     private void failed(RuntimeException ex) {
-        assert state == FlowState.RUNNING;
+        assert state == FlowStatus.RUNNING;
 
-        if(state != FlowState.RUNNING) {
+        if(state != FlowStatus.RUNNING) {
             throw new IllegalStateException("Not running flow failed with exception",ex);
         }
-        state = FlowState.FAILED;
+        state = FlowStatus.FAILED;
         context.flowEventPublisher().publish(new FlowFailedEvent(flowID,ex));
 
         throw ex;
     }
 
     @Override
-    public FlowState state() {
+    public FlowStatus state() {
         synchronized (stateLock) {
             return state;
         }
