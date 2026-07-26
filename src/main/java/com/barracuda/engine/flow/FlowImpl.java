@@ -32,7 +32,7 @@ public class FlowImpl implements Flow {
     @Override
     public void event(ExecutionEvent event) {
         switch (event) {
-            case FlowStartedEvent ev -> handleStartEvent(ev);
+            case FlowStartedEvent ev -> handleFlowStartedEvent(ev);
             case FlowCompletedEvent _ -> status = FlowStatus.COMPLETED; // already completed.
             case FlowFailedEvent ev -> {
                 status = FlowStatus.FAILED;
@@ -44,29 +44,21 @@ public class FlowImpl implements Flow {
         }
     }
 
-    private void handleStartEvent(FlowStartedEvent startedEvent) {
-        if (startedEvent.flowID() != flowID) {
+    private void handleFlowStartedEvent(FlowStartedEvent startedEvent) {
+        if (status != FlowStatus.REPLAY_MODE) {
+            throw new IllegalStateException("Flow cannot accept events due to it being in the " + status + " state.");
+        }
+
+        if (startedEvent.flowID() != flowID) { // event isn't associated with this flow. Propagate the event further.
             propagateEvent(startedEvent);
             return;
         }
-
-        verifyCanAcceptEvents();
 
         if (startedEventPublished) {
             throw new IllegalStateException("Duplicate flow started event.");
         }
 
         startedEventPublished = true;
-
-        if (nextNode != null) {
-            nextNode.event(startedEvent);
-        }
-    }
-
-    private void verifyCanAcceptEvents() {
-        if (status != FlowStatus.REPLAY_MODE) {
-            throw new IllegalStateException("Flow cannot accept events due to it being in the " + status + " state.");
-        }
     }
 
     private void handleCommand(CommandEvent event) {
@@ -82,9 +74,11 @@ public class FlowImpl implements Flow {
         if (status != FlowStatus.REPLAY_MODE) {
             throw new IllegalStateException("Cannot prepare flow because of its current status " + status);
         }
+
         if (nextNode != null) {
             nextNode.event(prepare);
         }
+
         status = FlowStatus.READY;
     }
 
@@ -92,8 +86,11 @@ public class FlowImpl implements Flow {
         if (status == FlowStatus.RUNNING) {
             throw new IllegalStateException("Cannot reset flow that is currently running.");
         }
+
         propagateEvent(reset);
+
         status = FlowStatus.READY;
+
         startedEventPublished = false;
     }
 
@@ -101,26 +98,30 @@ public class FlowImpl implements Flow {
         if (status != FlowStatus.READY) {
             throw new IllegalStateException("Flow cannot enter replay mode while in " + status + " state.");
         }
-        status = FlowStatus.REPLAY_MODE;
+
         if (nextNode != null) {
             nextNode.event(enterReplayMode);
         }
+
+        status = FlowStatus.REPLAY_MODE;
     }
 
     private void handleContinueCommand(Continue continueEvent) {
+        if (status != FlowStatus.READY) {
+            throw new IllegalStateException("Cannot continue a flow that's in " + status + " state.");
+        }
+
+        status = FlowStatus.RUNNING;
+
         if (!startedEventPublished) {
             context.flowEventPublisher().publish(new FlowStartedEvent(flowID));
             startedEventPublished = true;
         }
 
-        if (status != FlowStatus.READY) {
-            throw new IllegalStateException("Cannot continue a flow that's in " + status + " state.");
-        }
-        status = FlowStatus.RUNNING;
-
         propagateEvent(continueEvent);
 
         context.flowEventPublisher().publish(new FlowCompletedEvent(flowID));
+
         status = FlowStatus.COMPLETED;
     }
 
@@ -131,6 +132,7 @@ public class FlowImpl implements Flow {
         }
 
         ScopedValue.where(FLOW_CONTEXT, context).run(() -> {
+
             try (var scope = StructuredTaskScope.open()) {
                 scope.fork(() -> nextNode.event(event));
 
@@ -138,20 +140,21 @@ public class FlowImpl implements Flow {
             } catch (Exception e) {
                 handle(e);
             }
+
         });
     }
 
     private void handle(Throwable exception) {
         switch (exception) {
-            case FlowInterruptedException ex -> interrupted(ex);
-            case InterruptedException ex -> interrupted(new FlowInterruptedException("Flow Interrupted", ex));
+            case FlowInterruptedException ex -> handleInterruptedException(ex);
+            case InterruptedException ex -> handleInterruptedException(new FlowInterruptedException("Flow Interrupted", ex));
             case StructuredTaskScope.FailedException ex -> handle(ex.getCause());
-            case RuntimeException ex -> failed(ex);
-            default -> failed(new RuntimeException(exception));
+            case RuntimeException ex -> handleRuntimeException(ex);
+            default -> handleRuntimeException(new RuntimeException(exception));
         }
     }
 
-    private void interrupted(FlowInterruptedException ex) {
+    private void handleInterruptedException(FlowInterruptedException ex) {
         Thread.currentThread().interrupt();
         assert status == FlowStatus.RUNNING;
 
@@ -164,7 +167,7 @@ public class FlowImpl implements Flow {
         throw ex;
     }
 
-    private void failed(RuntimeException ex) {
+    private void handleRuntimeException(RuntimeException ex) {
         if (status != FlowStatus.RUNNING && status != FlowStatus.REPLAY_MODE) {
             throw new IllegalStateException("Flow that is neither RUNNING nor in REPLAY_MODE has failed", ex);
         }

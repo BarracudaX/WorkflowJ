@@ -48,6 +48,22 @@ public class FlowEventReplayingFlowStartedEventTest {
         assertThatThrownBy(testFlow::sendFlowStartedEvent).isInstanceOf(IllegalStateException.class).hasMessageContaining("Flow cannot accept events");
     }
 
+    /**
+     * This method is similar to shouldNotAllowSendingFlowStartEventToFlowThatIsRunning but also checks that the flow doesn't react to the event by checking the event history didn't change.
+     */
+    @Test
+    void shouldNotReactToFlowStartedEventIfFlowIsRunning() {
+        TestFlow testFlow = testFlow()
+                .ioTask("task")
+                .build()
+                .startFlow();
+        assertThat(testFlow).flowEventsSatisfy(events -> events.nextEventIs(FlowStartedEvent.class).andHasNoMoreEvents());
+
+        assertThatThrownBy(testFlow::sendFlowStartedEvent).isInstanceOf(IllegalStateException.class).hasMessageContaining("Flow cannot accept events");
+
+        assertThat(testFlow).flowEventsSatisfy(events -> events.nextEventIs(FlowStartedEvent.class).andHasNoMoreEvents());
+    }
+
     @Test
     void shouldNotAllowSendingFlowStartEventToFailedFlow() {
         TestFlow testFlow = testFlow()
