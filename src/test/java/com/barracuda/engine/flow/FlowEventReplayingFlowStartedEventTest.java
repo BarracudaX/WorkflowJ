@@ -1,8 +1,9 @@
 package com.barracuda.engine.flow;
 
-import com.barracuda.engine.event.ExecutionEvent;
 import com.barracuda.engine.event.ExecutionEvent.FlowEvent.FlowPausedEvent;
 import com.barracuda.engine.event.ExecutionEvent.FlowEvent.FlowStartedEvent;
+import com.barracuda.engine.event.ExecutionEvent.SubflowEvent.SubflowPausedEvent;
+import com.barracuda.engine.event.ExecutionEvent.SubflowEvent.SubflowStartedEvent;
 import com.barracuda.engine.test.flow.TestFlow;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
@@ -12,16 +13,17 @@ import static com.barracuda.engine.test.builder.TestFlowBuilder.testFlow;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-public class FlowEventReplayingStartEventTest {
+public class FlowEventReplayingFlowStartedEventTest {
 
-    //How can we verify that the flow processed the event?
     @Test
     void shouldAllowSendingStartEventWhenInReplayMode() {
-        testFlow()
-                .ioTask("task")
-                .build()
-                .enterReplayMode() /* enter replay mode */
-                .sendFlowStartedEvent();
+        assertThatCode(() ->
+                testFlow()
+                        .ioTask("task")
+                        .build()
+                        .enterReplayMode() /* enter replay mode */
+                        .sendFlowStartedEvent()
+        ).doesNotThrowAnyException();
     }
 
     @Test
@@ -84,9 +86,11 @@ public class FlowEventReplayingStartEventTest {
                 .ioTask("task")
                 .build()
                 .enterReplayMode() /* enter replay mode */
-                .sendFlowStartedEvent();
+                .sendFlowStartedEvent(); // first send is okay
 
-        assertThatThrownBy(testFlow::sendFlowStartedEvent).isInstanceOf(IllegalStateException.class).hasMessageContaining("Duplicate");
+        assertThatThrownBy(testFlow::sendFlowStartedEvent) // second send
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("Duplicate");
     }
 
     @Test
@@ -108,19 +112,57 @@ public class FlowEventReplayingStartEventTest {
         TestFlow testFlow = testFlow()
                 .ioTask("task")
                 .build()
-                .startFlow()
+                .startFlow() // run the flow so that the flow started event is published
                 .interruptFlow();
 
-        assertThat(testFlow).flowEventsSatisfying(events -> events.nextEventIs(FlowStartedEvent.class).nextEventIs(FlowPausedEvent.class).andHasNoMoreEvents());
+        assertThat(testFlow).flowEventsSatisfy(events -> events.nextEventIs(FlowStartedEvent.class).nextEventIs(FlowPausedEvent.class).andHasNoMoreEvents());
 
         testFlow
-                .reset()
+                .reset() // reset the flow
                 .enterReplayMode()
                 .sendFlowStartedEvent()
                 .prepare()
                 .startFlow();
 
-        assertThat(testFlow).flowEventsSatisfying(events -> events.nextEventIs(FlowStartedEvent.class).nextEventIs(FlowPausedEvent.class).andHasNoMoreEvents());
+        //events are the same, hence no new event was published.
+        assertThat(testFlow).flowEventsSatisfy(events -> events.nextEventIs(FlowStartedEvent.class).nextEventIs(FlowPausedEvent.class).andHasNoMoreEvents());
+    }
+
+    @Test
+    void shouldNotAllowSendingDuplicateSubflowStartEvent() {
+        var flow = testFlow()
+                .parallel(parallel -> parallel.subflow("Subflow1", subflow -> subflow.ioTask("task")))
+                .build()
+                .startFlow()
+                .interruptFlow()
+                .reset()
+                .enterReplayMode();
+
+        var event = new SubflowStartedEvent(flow.flowID(), flow.subflowID("Subflow1"));
+
+        flow.sendEvent(event); // should go through the root and reach the subflow.
+
+        assertThatThrownBy(() -> flow.sendEvent(event)).isInstanceOf(IllegalStateException.class).hasMessageContaining("Duplicate");
+
+    }
+
+    @Test
+    void shouldNotPublishSubflowStartEventWhenItHasBeenReplayed() {
+        var flow = testFlow()
+                .parallel(parallel -> parallel.subflow("Subflow1", subflow -> subflow.ioTask("task")))
+                .build()
+                .startFlow()
+                .interruptFlow()
+                .reset()
+                .enterReplayMode();
+        assertThat(flow).subflowEventsSatisfy("Subflow1", events -> events.nextEventIs(SubflowStartedEvent.class).nextEventIs(SubflowPausedEvent.class).andHasNoMoreEvents());
+
+        flow
+                .sendEvent(new SubflowStartedEvent(flow.flowID(), flow.subflowID("Subflow1")))
+                .prepare()
+                .startFlow();
+
+        assertThat(flow).subflowEventsSatisfy("Subflow1", events -> events.nextEventIs(SubflowStartedEvent.class).nextEventIs(SubflowPausedEvent.class).andHasNoMoreEvents());
     }
 
     @Disabled("TODO")
@@ -128,16 +170,19 @@ public class FlowEventReplayingStartEventTest {
     void shouldSkipCompletedTaskWhenReplaying() {
 
     }
+
     @Disabled("TODO")
     @Test
     void shouldContinueTheTaskIfItsCompletedEventIsNotReplayed() {
 
     }
+
     @Disabled("TODO")
     @Test
     void shouldTerminateWithExceptionWhenReplayFlowFailedEvent() {
 
     }
+
     @Disabled("TODO")
     @Test
     void shouldTerminateWithExceptionWhenReplayingSubflowFailedEvent() {

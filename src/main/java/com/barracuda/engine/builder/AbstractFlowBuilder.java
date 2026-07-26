@@ -7,6 +7,7 @@ import com.barracuda.engine.event.FlowEventPublisher;
 import com.barracuda.engine.event.NoOpEvenPublisher;
 import com.barracuda.engine.event.SubflowEventPublisherDecorator;
 import com.barracuda.engine.flow.Flow;
+import com.barracuda.engine.flow.SubflowDecorator;
 import com.barracuda.engine.task.Task;
 
 import java.util.ArrayList;
@@ -103,7 +104,7 @@ public abstract class AbstractFlowBuilder<T extends AbstractFlowBuilder<T>> {
             var builder = new FlowBuilder(subflowID, cpuExecutor, ioExecutor,rootID).eventPublisher(new SubflowEventPublisherDecorator(subflowID,rootID,flowEventPublisher));
             flowBuilderConsumer.accept(builder);
 
-            Flow subflow = builder.build();
+            Flow subflow = new SubflowDecorator(builder.build());
             buildHook.accept(subflow);
             subflows.add(subflow);
 

@@ -27,24 +27,6 @@ public class ParallelNode implements ChainNode {
 
     @Override
     public void event(ExecutionEvent event) {
-
-        switch(event){
-            case FlowEvent ev when subflows.containsKey(ev.flowID())-> {
-                subflows.get(ev.flowID()).event(event);
-                return;
-            }
-            case Reset _, Prepare _, Continue _ ->{
-
-            }
-            default -> {
-                if(next != null){
-                    next.event(event);
-                }
-                return;
-            }
-        }
-
-        //should get here only if the event was continue
         try (var scope = StructuredTaskScope.open()) {
             subflows.values().forEach(subflow -> scope.fork( () -> subflow.event(event)));
             scope.join();

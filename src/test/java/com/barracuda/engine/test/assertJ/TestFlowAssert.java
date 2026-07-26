@@ -62,12 +62,12 @@ public class TestFlowAssert extends AbstractAssert<TestFlowAssert, TestFlow> {
         return this;
     }
 
-    public TestFlowAssert flowEventsSatisfying(Consumer<ExecutionEventsAssert<FlowEvent>> verifier){
+    public TestFlowAssert flowEventsSatisfy(Consumer<ExecutionEventsAssert<FlowEvent>> verifier){
         verifier.accept(new ExecutionEventsAssert<>(actual.flowEvents()));
         return this;
     }
 
-    public TestFlowAssert subflowEventsSatisfying(String subflow, Consumer<ExecutionEventsAssert<SubflowEvent>> verifier){
+    public TestFlowAssert subflowEventsSatisfy(String subflow, Consumer<ExecutionEventsAssert<SubflowEvent>> verifier){
         verifier.accept(new ExecutionEventsAssert<>(actual.subflowEvents(subflow)));
         return this;
     }

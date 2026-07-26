@@ -31,7 +31,6 @@ public class FlowImpl implements Flow {
 
     @Override
     public void event(ExecutionEvent event) {
-
         switch (event) {
             case FlowStartedEvent ev -> handleStartEvent(ev);
             case FlowCompletedEvent _ -> status = FlowStatus.COMPLETED; // already completed.
@@ -45,26 +44,7 @@ public class FlowImpl implements Flow {
         }
     }
 
-    @Override
-    public void prettyPrint(FlowPrettyOutput output) {
-        output.increaseLevel();
-
-        StringBuilder sb = output.getStringBuilder();
-
-        sb.append("\n").append(output.getTab()).append("[Flow]");
-
-        sb.append("\n").append(output.getTab()).append("Status:").append(status);
-
-        if (nextNode != null) {
-            sb.append("\n").append(output.getTab()).append("Next Node:");
-            nextNode.prettyPrint(output);
-        }
-
-        output.decreaseLevel();
-    }
-
     private void handleStartEvent(FlowStartedEvent startedEvent) {
-
         if (startedEvent.flowID() != flowID) {
             propagateEvent(startedEvent);
             return;
@@ -185,10 +165,8 @@ public class FlowImpl implements Flow {
     }
 
     private void failed(RuntimeException ex) {
-        assert status == FlowStatus.RUNNING;
-
-        if (status != FlowStatus.RUNNING) {
-            throw new IllegalStateException("Not running flow failed with exception", ex);
+        if (status != FlowStatus.RUNNING && status != FlowStatus.REPLAY_MODE) {
+            throw new IllegalStateException("Flow that is neither RUNNING nor in REPLAY_MODE has failed", ex);
         }
         status = FlowStatus.FAILED;
         context.flowEventPublisher().publish(new FlowFailedEvent(flowID, ex));
@@ -204,5 +182,23 @@ public class FlowImpl implements Flow {
     @Override
     public long id() {
         return flowID;
+    }
+
+    @Override
+    public void prettyPrint(FlowPrettyOutput output) {
+        output.increaseLevel();
+
+        StringBuilder sb = output.getStringBuilder();
+
+        sb.append("\n").append(output.getTab()).append("[Flow]");
+
+        sb.append("\n").append(output.getTab()).append("Status:").append(status);
+
+        if (nextNode != null) {
+            sb.append("\n").append(output.getTab()).append("Next Node:");
+            nextNode.prettyPrint(output);
+        }
+
+        output.decreaseLevel();
     }
 }

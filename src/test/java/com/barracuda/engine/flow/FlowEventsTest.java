@@ -29,7 +29,7 @@ public class FlowEventsTest {
                 .build()
                 .startFlow();
 
-        assertThat(testFlow).flowEventsSatisfying(events -> events.nextEventIs(FlowStartedEvent.class).andHasNoMoreEvents());
+        assertThat(testFlow).flowEventsSatisfy(events -> events.nextEventIs(FlowStartedEvent.class).andHasNoMoreEvents());
     }
 
     @Test
@@ -41,7 +41,7 @@ public class FlowEventsTest {
                 .finishTask("test")
                 .waitUntilFlowCompleted();
 
-        assertThat(testFlow).flowEventsSatisfying(events -> events.nextEventIs(FlowStartedEvent.class).nextEventIs(FlowCompletedEvent.class).andHasNoMoreEvents());
+        assertThat(testFlow).flowEventsSatisfy(events -> events.nextEventIs(FlowStartedEvent.class).nextEventIs(FlowCompletedEvent.class).andHasNoMoreEvents());
     }
 
     @Test
@@ -54,7 +54,7 @@ public class FlowEventsTest {
                 .startFlow()
                 .failTask("test", exception);
 
-        assertThat(testFlow).flowEventsSatisfying(events ->
+        assertThat(testFlow).flowEventsSatisfy(events ->
                 events.nextEventIs(FlowStartedEvent.class)
                         .nextEventIs(FlowFailedEvent.class, event -> assertThat(event.exception()).isEqualTo(exception))
                         .andHasNoMoreEvents()
@@ -80,7 +80,7 @@ public class FlowEventsTest {
                 .interruptFlow()
                 .waitUntilPaused();
 
-        assertThat(testFlow).flowEventsSatisfying(events -> events.nextEventIs(FlowStartedEvent.class).nextEventIs(FlowPausedEvent.class).andHasNoMoreEvents());
+        assertThat(testFlow).flowEventsSatisfy(events -> events.nextEventIs(FlowStartedEvent.class).nextEventIs(FlowPausedEvent.class).andHasNoMoreEvents());
     }
 
     @Test
@@ -98,9 +98,9 @@ public class FlowEventsTest {
                 .finishTask("task1")
                 .waitUntilTaskRunning("parallelTask1");
 
-        assertThat(testFlow).subflowEventsSatisfying("Subflow1", events -> events.nextEventIs(SubflowStartedEvent.class).andHasNoMoreEvents());
-        assertThat(testFlow).subflowEventsSatisfying("Subflow2", events -> events.nextEventIs(SubflowStartedEvent.class).andHasNoMoreEvents());
-        assertThat(testFlow).subflowEventsSatisfying("Subflow3", events -> events.nextEventIs(SubflowStartedEvent.class).andHasNoMoreEvents());
+        assertThat(testFlow).subflowEventsSatisfy("Subflow1", events -> events.nextEventIs(SubflowStartedEvent.class).andHasNoMoreEvents());
+        assertThat(testFlow).subflowEventsSatisfy("Subflow2", events -> events.nextEventIs(SubflowStartedEvent.class).andHasNoMoreEvents());
+        assertThat(testFlow).subflowEventsSatisfy("Subflow3", events -> events.nextEventIs(SubflowStartedEvent.class).andHasNoMoreEvents());
     }
 
     @Test
@@ -120,17 +120,17 @@ public class FlowEventsTest {
                 .finishTask("parallelTask2");
 
         assertThat(testFlow)
-                .subflowEventsSatisfying("Subflow1", events ->
+                .subflowEventsSatisfy("Subflow1", events ->
                         events
                                 .nextEventIs(SubflowStartedEvent.class)
                                 .nextEventIs(SubflowCompletedEvent.class)
                                 .andHasNoMoreEvents()
-                ).subflowEventsSatisfying("Subflow2", events ->
+                ).subflowEventsSatisfy("Subflow2", events ->
                         events
                                 .nextEventIs(SubflowStartedEvent.class)
                                 .nextEventIs(SubflowCompletedEvent.class)
                                 .andHasNoMoreEvents()
-                ).subflowEventsSatisfying("Subflow3", events ->
+                ).subflowEventsSatisfy("Subflow3", events ->
                         events
                                 .nextEventIs(SubflowStartedEvent.class)
                                 .andHasNoMoreEvents()
@@ -148,7 +148,7 @@ public class FlowEventsTest {
                 .waitUntilTaskRunningAndFailItAndWaitUntilFailed("parallelTask1", exception);
 
         assertThat(testFlow)
-                .subflowEventsSatisfying("Subflow1", events ->
+                .subflowEventsSatisfy("Subflow1", events ->
                         events
                                 .nextEventIs(SubflowStartedEvent.class)
                                 .nextEventIs(SubflowFailedEvent.class, event -> assertThat(event.exception()).isEqualTo(exception))
@@ -169,15 +169,15 @@ public class FlowEventsTest {
                 .startFlow()
                 .waitUntilTaskRunningAndFailItAndWaitUntilFailed("parallelTask1", exception);
 
-        assertThat(testFlow).subflowEventsSatisfying("Subflow1", events ->
+        assertThat(testFlow).subflowEventsSatisfy("Subflow1", events ->
                 events
                         .nextEventIs(SubflowStartedEvent.class)
                         .nextEventIs(SubflowFailedEvent.class, event -> assertThat(event.exception()).isEqualTo(exception))
                         .andHasNoMoreEvents()
         );
 
-        assertThat(testFlow).subflowEventsSatisfying("Subflow2", events -> events.nextEventIs(SubflowStartedEvent.class).nextEventIs(SubflowEvent.SubflowPausedEvent.class).andHasNoMoreEvents());
-        assertThat(testFlow).subflowEventsSatisfying("Subflow3", events -> events.nextEventIs(SubflowStartedEvent.class).nextEventIs(SubflowEvent.SubflowPausedEvent.class).andHasNoMoreEvents());
+        assertThat(testFlow).subflowEventsSatisfy("Subflow2", events -> events.nextEventIs(SubflowStartedEvent.class).nextEventIs(SubflowEvent.SubflowPausedEvent.class).andHasNoMoreEvents());
+        assertThat(testFlow).subflowEventsSatisfy("Subflow3", events -> events.nextEventIs(SubflowStartedEvent.class).nextEventIs(SubflowEvent.SubflowPausedEvent.class).andHasNoMoreEvents());
 
     }
 
