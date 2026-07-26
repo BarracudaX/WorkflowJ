@@ -31,16 +31,9 @@ public class FlowImpl implements Flow {
 
     @Override
     public void event(ExecutionEvent event) {
+
         switch (event){
-            case FlowStartedEvent _ -> {
-                if(startedEventPublished) {
-                    throw new IllegalStateException("Duplicate flow started event.");
-                }
-                startedEventPublished = true;
-                if (state != FlowState.READY) {
-                    throw new IllegalStateException("Flow cannot be started because of it's current state being "+state);
-                }
-            }
+            case FlowStartedEvent ev -> handleStartEvent(ev);
             case FlowCompletedEvent _ -> state = FlowState.COMPLETED; // already completed.
             case FlowFailedEvent ev -> {
                 state = FlowState.FAILED;
@@ -49,6 +42,51 @@ public class FlowImpl implements Flow {
             case FlowPausedEvent _ -> state = FlowState.PAUSED;
             case CommandEvent command -> handleCommand(command);
             default -> propagateEvent(event);
+        }
+    }
+
+    @Override
+    public void prettyPrint(FlowPrettyOutput output) {
+        output.increaseLevel();
+
+        StringBuilder sb = output.getStringBuilder();
+
+        sb.append("\n").append(output.getTab()).append("[Flow]");
+
+        synchronized (stateLock) {
+            sb.append("\n").append(output.getTab()).append("State:").append(state);
+        }
+
+        if (chainNode != null) {
+            sb.append("\n").append(output.getTab()).append("Next Node:");
+            chainNode.prettyPrint(output);
+        }
+
+        output.decreaseLevel();
+    }
+
+    private void handleStartEvent(FlowStartedEvent startedEvent) {
+
+        if(startedEvent.flowID() != flowID){
+            propagateEvent(startedEvent);
+            return ;
+        }
+
+        synchronized (stateLock) {
+
+            if (state != FlowState.REPLAY_MODE) {
+                throw new IllegalStateException("Flow cannot accept events due to it being in the "+state+" state.");
+            }
+
+            if(startedEventPublished) {
+                throw new IllegalStateException("Duplicate flow started event.");
+            }
+
+            startedEventPublished = true;
+
+            if (chainNode != null) {
+                chainNode.event(startedEvent);
+            }
         }
     }
 
@@ -62,7 +100,7 @@ public class FlowImpl implements Flow {
 
     private void replayMode(EnterReplayMode enterReplayMode) {
         synchronized (stateLock) {
-            if (state == FlowState.RUNNING || state == FlowState.FAILED || state == FlowState.COMPLETED || state == FlowState.PAUSED) {
+            if (state != FlowState.READY) {
                 throw new IllegalStateException("Flow cannot enter transition state while in "+state+" state.");
             }
             state = FlowState.REPLAY_MODE;

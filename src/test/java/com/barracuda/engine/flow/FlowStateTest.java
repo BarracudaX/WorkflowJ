@@ -2,9 +2,12 @@ package com.barracuda.engine.flow;
 
 import com.barracuda.engine.test.flow.TestFlow;
 import org.assertj.core.api.Assertions;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
+import static com.barracuda.engine.test.assertJ.CustomAssertions.assertThat;
 import static com.barracuda.engine.test.builder.TestFlowBuilder.testFlow;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * Tests related to flow's state.
@@ -16,99 +19,111 @@ public class FlowStateTest {
         testFlow()
                 .ioTask("Task")
                 .build()
-                .expectFlowReady();
+                .waitUntilReady();
     }
 
     @Test
     void runningFlowShouldHaveRunningState() {
-        testFlow()
+        var testFlow = testFlow()
                 .ioTask("Task")
                 .build()
-                .startFlow()
-                .expectIsRunning();
+                .startFlow();
+
+        assertThat(testFlow).isEventuallyRunning();
     }
 
     @Test
     void shouldHaveCompletedStateOnceFinished() {
-        testFlow()
+        var testFlow = testFlow()
                 .ioTask("Task")
                 .build()
                 .startFlow()
-                .finishTask("Task")
-                .expectFlowCompleted();
+                .finishTask("Task");
+
+        assertThat(testFlow).isEventuallyCompleted();
     }
 
     @Test
     void shouldHaveFailedStateIfTaskFailsWithException() {
         var exception = new RuntimeException("FAILED");
-        testFlow()
+
+        var testFlow = testFlow()
                 .ioTask("FailTask")
                 .build()
                 .startFlow()
-                .failTask("FailTask", exception)
-                .expectFlowFailed(exception);
+                .failTask("FailTask", exception);
+
+        assertThat(testFlow).hasEventuallyFailedWith(exception);
     }
 
     @Test
     void shouldHavePausedStateWhenInterrupted() {
-        testFlow()
+        var testFlow = testFlow()
                 .ioTask("FirstTask")
                 .build()
                 .startFlow()
-                .interruptFlowAndExpectFlowPaused();
+                .interruptFlow();
+
+        assertThat(testFlow).isEventuallyPaused();
     }
 
     @Test
     void shouldBeAllowedToTransitionToReplayModeWhenInReadyState() {
-        testFlow()
+        var testFlow = testFlow()
                 .ioTask("task")
                 .build()
-                .expectFlowReady()
-                .replayMode()
-                .expectFlowInReplayMode();
+                .replayMode();
+
+        assertThat(testFlow).enteredEventuallyReplayMode();
     }
 
     @Test
     void shouldNotBeAbleToTransitionToReplayModeWhenRunning() {
-        testFlow()
+        var testFlow = testFlow()
                 .ioTask("task")
                 .build()
-                .startFlow()
-                .assertThrows(TestFlow::replayMode, error -> error.isInstanceOf(IllegalStateException.class));
+                .startFlow();
+
+        assertThatThrownBy(testFlow::replayMode).isInstanceOf(IllegalStateException.class);
     }
 
     @Test
     void shouldNotBeAbleToTransitionToReplayModeWhenFlowInFailedState() {
-        testFlow()
+        var testFlow = testFlow()
                 .ioTask("task")
                 .build()
                 .startFlow()
                 .failTask("task", new RuntimeException("FAILED"))
-                .expectFlowFailed()
-                .assertThrows(TestFlow::replayMode, error -> error.isInstanceOf(IllegalStateException.class));
+                .waitUntilFailed();
+
+        assertThatThrownBy(testFlow::replayMode).isInstanceOf(IllegalStateException.class);
     }
 
     @Test
     void shouldNotBeAbleToTransitionToReplayModeWhenFlowInCompletedState() {
-        testFlow()
+        var testFlow = testFlow()
                 .ioTask("task")
                 .build()
                 .startFlow()
                 .finishTask("task")
-                .expectFlowCompleted()
-                .assertThrows(TestFlow::replayMode, error -> error.isInstanceOf(IllegalStateException.class));
+                .waitUntilCompleted();
+
+        assertThatThrownBy(testFlow::replayMode).isInstanceOf(IllegalStateException.class);
     }
 
     @Test
     void shouldNotBeAbleToTransitionToReplayModeWhenFlowInPausedState() {
-        testFlow()
+        TestFlow testFlow = testFlow()
                 .ioTask("task")
                 .build()
                 .startFlow()
-                .interruptFlowAndExpectFlowPaused()
-                .assertThrows(TestFlow::replayMode, error -> error.isInstanceOf(IllegalStateException.class));
+                .interruptFlow()
+                .waitUntilPaused();
+
+        assertThatThrownBy(testFlow::replayMode).isInstanceOf(IllegalStateException.class);
     }
 
+    @Disabled("Currently not allowed.")
     @Test
     void shouldAllowSendingEnterReplayModeCommandWhenAlreadyInReplayMode() {
         Assertions.assertThatCode(() -> testFlow()

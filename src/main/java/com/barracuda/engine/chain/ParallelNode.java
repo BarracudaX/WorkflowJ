@@ -5,6 +5,7 @@ import com.barracuda.engine.event.ExecutionEvent.CommandEvent.Continue;
 import com.barracuda.engine.event.ExecutionEvent.FlowEvent;
 import com.barracuda.engine.flow.Flow;
 import com.barracuda.engine.flow.FlowInterruptedException;
+import com.barracuda.engine.flow.FlowPrettyOutput;
 
 import java.util.List;
 import java.util.Map;
@@ -51,6 +52,20 @@ public class ParallelNode implements ChainNode {
 
         if (next != null) {
             next.event(event);
+        }
+    }
+
+    @Override
+    public void prettyPrint(FlowPrettyOutput output) {
+        StringBuilder sb = output.getStringBuilder();
+        sb
+                .append("\n").append(output.getTab()).append("[Parallel Node]")
+                .append("\n").append(output.getTab()).append("Subflows:");
+
+        subflows.values().forEach(subflow -> subflow.prettyPrint(output));
+
+        if (next != null) {
+            next.prettyPrint(output);
         }
     }
 

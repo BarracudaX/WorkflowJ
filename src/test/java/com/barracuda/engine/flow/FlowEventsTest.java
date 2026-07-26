@@ -1,12 +1,19 @@
 package com.barracuda.engine.flow;
 
-import com.barracuda.engine.event.ExecutionEvent;
+import com.barracuda.engine.event.ExecutionEvent.FlowEvent.FlowCompletedEvent;
+import com.barracuda.engine.event.ExecutionEvent.FlowEvent.FlowFailedEvent;
+import com.barracuda.engine.event.ExecutionEvent.FlowEvent.FlowPausedEvent;
+import com.barracuda.engine.event.ExecutionEvent.FlowEvent.FlowStartedEvent;
 import com.barracuda.engine.event.ExecutionEvent.SubflowEvent;
-import com.barracuda.engine.test.flow.SubflowEventsInOrderVerifier;
+import com.barracuda.engine.event.ExecutionEvent.SubflowEvent.SubflowCompletedEvent;
+import com.barracuda.engine.event.ExecutionEvent.SubflowEvent.SubflowFailedEvent;
+import com.barracuda.engine.event.ExecutionEvent.SubflowEvent.SubflowStartedEvent;
+import com.barracuda.engine.test.flow.TestFlow;
 import org.junit.jupiter.api.Test;
 
 import java.util.stream.Stream;
 
+import static com.barracuda.engine.test.assertJ.CustomAssertions.assertThat;
 import static com.barracuda.engine.test.builder.TestFlowBuilder.testFlow;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -17,45 +24,47 @@ public class FlowEventsTest {
 
     @Test
     void shouldPublishFlowStartedEventWhenStartingTheFlow() {
-        testFlow()
+        TestFlow testFlow = testFlow()
                 .ioTask("test")
                 .build()
-                .startFlow()
-                .assertFlowEventsInOrder(events -> events.hasFlowStartedEvent().andHasNoMoreEvents());
+                .startFlow();
+
+        assertThat(testFlow).flowEventsSatisfying(events -> events.nextEventIs(FlowStartedEvent.class).andHasNoMoreEvents());
     }
 
     @Test
     void shouldPublishFlowCompletedEventWhenFlowFinishesNormally() {
-        testFlow()
+        TestFlow testFlow = testFlow()
                 .ioTask("test")
                 .build()
                 .startFlow()
                 .finishTask("test")
-                .expectFlowCompleted()
-                .assertFlowEventsInOrder(events -> events.hasFlowStartedEvent().hasFlowCompletedEvent().andHasNoMoreEvents());
+                .waitUntilCompleted();
+
+        assertThat(testFlow).flowEventsSatisfying(events -> events.nextEventIs(FlowStartedEvent.class).nextEventIs(FlowCompletedEvent.class).andHasNoMoreEvents());
     }
 
     @Test
     void shouldPublishFlowFailedEventWhenATaskFailsWithAnException() {
         var exception = new RuntimeException("FAILED");
 
-        testFlow()
+        TestFlow testFlow = testFlow()
                 .ioTask("test")
                 .build()
                 .startFlow()
                 .failTask("test", exception)
-                .expectFlowFailed()
-                .assertFlowEventsInOrder(events -> events
-                        .hasFlowStartedEvent()
-                        .hasFlowFailedEvent(event -> assertThat(event.exception()).isSameAs(exception))
+                .waitUntilFailed();
+
+        assertThat(testFlow).flowEventsSatisfying(events ->
+                events.nextEventIs(FlowStartedEvent.class)
+                        .nextEventIs(FlowFailedEvent.class, event -> assertThat(event.exception()).isEqualTo(exception))
                         .andHasNoMoreEvents()
-                );
+        );
     }
 
     @Test
     void shouldPublishFlowPausedEventWhenInterrupted() {
-        //need better output for debugging/testing.
-        testFlow()
+        TestFlow testFlow = testFlow()
                 .ioTask("task1")
                 .parallel(parallel -> parallel
                         .subflow("Subflow1", subflow -> subflow.ioTask("parallelTask1"))
@@ -65,15 +74,19 @@ public class FlowEventsTest {
                 .ioTask("task2")
                 .build()
                 .startFlow()
+                .waitUntilTaskRunning("task1")
                 .finishTask("task1")
+                .waitUntilTaskRunning("parallelTask1")
                 .finishTask("parallelTask1")
-                .interruptFlowAndExpectFlowPaused()
-                .assertFlowEventsInOrder(events -> events.hasFlowStartedEvent().hasFlowPausedEvent().andHasNoMoreEvents());
+                .interruptFlow()
+                .waitUntilPaused();
+
+        assertThat(testFlow).flowEventsSatisfying(events -> events.nextEventIs(FlowStartedEvent.class).nextEventIs(FlowPausedEvent.class).andHasNoMoreEvents());
     }
 
     @Test
     void shouldPublishSubflowStartedEvent() {
-        testFlow()
+        TestFlow testFlow = testFlow()
                 .ioTask("task1")
                 .parallel(parallel -> parallel
                         .subflow("Subflow1", subflow -> subflow.ioTask("parallelTask1"))
@@ -84,17 +97,16 @@ public class FlowEventsTest {
                 .build()
                 .startFlow()
                 .finishTask("task1")
-                .assertTaskRunning("parallelTask1")
-                .finishTask("parallelTask1")
-                .interruptFlowAndExpectFlowPaused()
-                .assertSubflowEventsInOrder("Subflow1", SubflowEventsInOrderVerifier::hasSubflowStartedEvent)
-                .assertSubflowEventsInOrder("Subflow2", SubflowEventsInOrderVerifier::hasSubflowStartedEvent)
-                .assertSubflowEventsInOrder("Subflow3", SubflowEventsInOrderVerifier::hasSubflowStartedEvent);
+                .waitUntilTaskRunning("parallelTask1");
+
+        assertThat(testFlow).subflowEventsSatisfying("Subflow1", events -> events.nextEventIs(SubflowStartedEvent.class).andHasNoMoreEvents());
+        assertThat(testFlow).subflowEventsSatisfying("Subflow2", events -> events.nextEventIs(SubflowStartedEvent.class).andHasNoMoreEvents());
+        assertThat(testFlow).subflowEventsSatisfying("Subflow3", events -> events.nextEventIs(SubflowStartedEvent.class).andHasNoMoreEvents());
     }
 
     @Test
     void shouldPublishSubflowCompletedEventForSubflowThatCompleted() {
-        testFlow()
+        TestFlow testFlow = testFlow()
                 .parallel(parallel -> parallel
                         .subflow("Subflow1", subflow -> subflow.ioTask("parallelTask1"))
                         .subflow("Subflow2", subflow -> subflow.ioTask("parallelTask2"))
@@ -102,35 +114,53 @@ public class FlowEventsTest {
                 )
                 .build()
                 .startFlow()
+                .waitUntilTaskRunning("parallelTask1")
+                .waitUntilTaskRunning("parallelTask2")
+                .waitUntilTaskRunning("parallelTask3")
                 .finishTask("parallelTask1")
-                .finishTask("parallelTask2")
-                .expectTaskIsRunning("parallelTask3")
-                .assertSubflowEventsInOrder("Subflow1", events -> events.hasSubflowStartedEvent().hasSubflowCompletedEvent().andHasNoMoreEvents())
-                .assertSubflowEventsInOrder("Subflow2", events -> events.hasSubflowStartedEvent().hasSubflowCompletedEvent().andHasNoMoreEvents())
-                .assertSubflowEventsInOrder("Subflow3", events -> events.hasSubflowStartedEvent().andHasNoMoreEvents());
+                .finishTask("parallelTask2");
+
+        assertThat(testFlow)
+                .subflowEventsSatisfying("Subflow1", events ->
+                        events
+                                .nextEventIs(SubflowStartedEvent.class)
+                                .nextEventIs(SubflowCompletedEvent.class)
+                                .andHasNoMoreEvents()
+                ).subflowEventsSatisfying("Subflow2", events ->
+                        events
+                                .nextEventIs(SubflowStartedEvent.class)
+                                .nextEventIs(SubflowCompletedEvent.class)
+                                .andHasNoMoreEvents()
+                ).subflowEventsSatisfying("Subflow3", events ->
+                        events
+                                .nextEventIs(SubflowStartedEvent.class)
+                                .andHasNoMoreEvents()
+                );
+
     }
 
     @Test
     void shouldPublishSubflowFailedEvent() {
-        testFlow()
-                .parallel(parallel -> parallel
-                        .subflow("Subflow1", subflow -> subflow.ioTask("parallelTask1"))
-                        .subflow("Subflow2", subflow -> subflow.ioTask("parallelTask2"))
-                        .subflow("Subflow3", subflow -> subflow.ioTask("parallelTask3"))
-                )
+        RuntimeException exception = new RuntimeException("FAILED");
+        TestFlow testFlow = testFlow()
+                .parallel(parallel -> parallel.subflow("Subflow1", subflow -> subflow.ioTask("parallelTask1")))
                 .build()
                 .startFlow()
-                .failTask("parallelTask1",new RuntimeException("FAILED"))
-                .assertSubflowEventsInOrder("Subflow1",events -> events
-                        .hasSubflowStartedEvent()
-                        .hasSubflowFailedEvent(event -> assertThat(event.exception()).isInstanceOf(RuntimeException.class).hasMessageContaining("FAILED"))
-                        .andHasNoMoreEvents()
+                .waitUntilTaskRunningAndFailItAndWaitUntilFailed("parallelTask1", exception);
+
+        assertThat(testFlow)
+                .subflowEventsSatisfying("Subflow1", events ->
+                        events
+                                .nextEventIs(SubflowStartedEvent.class)
+                                .nextEventIs(SubflowFailedEvent.class, event -> assertThat(event.exception()).isEqualTo(exception))
+                                .andHasNoMoreEvents()
                 );
     }
 
     @Test
     void shouldPublishSubflowInterruptedEventWhenOneParallelSubflowFails() {
-        testFlow()
+        RuntimeException exception = new RuntimeException("FAILED");
+        TestFlow testFlow = testFlow()
                 .parallel(parallel -> parallel
                         .subflow("Subflow1", subflow -> subflow.ioTask("parallelTask1"))
                         .subflow("Subflow2", subflow -> subflow.ioTask("parallelTask2"))
@@ -138,9 +168,19 @@ public class FlowEventsTest {
                 )
                 .build()
                 .startFlow()
-                .failTask("parallelTask1",new RuntimeException("FAILED"))
-                .assertSubflowEventsInOrder("Subflow2", events -> events.hasSubflowStartedEvent().hasSubflowPausedEvent().andHasNoMoreEvents())
-                .assertSubflowEventsInOrder("Subflow3", events -> events.hasSubflowStartedEvent().hasSubflowPausedEvent().andHasNoMoreEvents());
+                .waitUntilTaskRunningAndFailItAndWaitUntilFailed("parallelTask1", exception)
+                .waitUntilFailed();
+
+        assertThat(testFlow).subflowEventsSatisfying("Subflow1", events ->
+                events
+                        .nextEventIs(SubflowStartedEvent.class)
+                        .nextEventIs(SubflowFailedEvent.class, event -> assertThat(event.exception()).isEqualTo(exception))
+                        .andHasNoMoreEvents()
+        );
+
+        assertThat(testFlow).subflowEventsSatisfying("Subflow2", events -> events.nextEventIs(SubflowStartedEvent.class).nextEventIs(SubflowEvent.SubflowPausedEvent.class).andHasNoMoreEvents());
+        assertThat(testFlow).subflowEventsSatisfying("Subflow3", events -> events.nextEventIs(SubflowStartedEvent.class).nextEventIs(SubflowEvent.SubflowPausedEvent.class).andHasNoMoreEvents());
+
     }
 
     @Test
@@ -165,13 +205,13 @@ public class FlowEventsTest {
                 })
                 .build()
                 .startFlow()
-                .expectTaskIsRunning("task1")
+                .waitUntilTaskRunning("task1")
                 .finishTask("task1")
-                .expectTaskIsRunning("task2")
+                .waitUntilTaskRunning("task2")
                 .finishTask("task2")
-                .expectTaskIsRunning("task3")
+                .waitUntilTaskRunning("task3")
                 .finishTask("task3")
-                .expectFlowCompleted();
+                .waitUntilCompleted();
 
         record SubflowAndEvent(String subflowName, SubflowEvent event){ }
 

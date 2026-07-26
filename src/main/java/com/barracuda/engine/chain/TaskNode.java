@@ -7,6 +7,7 @@ import com.barracuda.engine.event.ExecutionEvent.TaskEvent.TaskFailedEvent;
 import com.barracuda.engine.event.ExecutionEvent.TaskEvent.TaskPausedEvent;
 import com.barracuda.engine.event.ExecutionEvent.TaskEvent.TaskStartEvent;
 import com.barracuda.engine.flow.FlowInterruptedException;
+import com.barracuda.engine.flow.FlowPrettyOutput;
 import com.barracuda.engine.task.Task;
 
 import java.util.ConcurrentModificationException;
@@ -83,6 +84,26 @@ public class TaskNode<I,R> implements ChainNode{
             next.event(event);
         }
 
+    }
+
+    @Override
+    public void prettyPrint(FlowPrettyOutput output) {
+        output.increaseLevel();
+        StringBuilder sb = output.getStringBuilder();
+        sb
+                .append("\n").append(output.getTab()).append("[Task Node]")
+                .append("\n").append(output.getTab()).append("Task Details: ")
+                .append("\n").append(output.getTab()).append(task.toString())
+                .append("\n").append(output.getTab()).append("Task Input Loader: ")
+                .append("\n").append(output.getTab()).append(taskInputSupplier.toString())
+                .append("\n").append(output.getTab()).append("Task Output Consumer: ")
+                .append("\n").append(output.getTab()).append(taskOutputConsumer.toString()).append("\n\n");
+
+        if (next != null) {
+            sb.append(output.getTab()).append("Next Node:");
+            next.prettyPrint(output);
+        }
+        output.decreaseLevel();
     }
 
     private void handle(Throwable cause, Future<R> taskFuture,long flowID) {

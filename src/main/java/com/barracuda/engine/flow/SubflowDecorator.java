@@ -31,6 +31,11 @@ public class SubflowDecorator implements Flow {
     }
 
     @Override
+    public void prettyPrint(FlowPrettyOutput output) {
+        subflow.prettyPrint(output);
+    }
+
+    @Override
     public FlowState state() {
         return subflow.state();
     }

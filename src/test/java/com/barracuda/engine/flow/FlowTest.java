@@ -1,6 +1,8 @@
 package com.barracuda.engine.flow;
 
 import com.barracuda.engine.event.ExecutionEvent.CommandEvent.Continue;
+import com.barracuda.engine.test.assertJ.CustomAssertions;
+import com.barracuda.engine.test.assertJ.TestFlowAssert;
 import com.barracuda.engine.test.flow.TestFlow;
 import com.barracuda.engine.utility.AwaitilityUtils;
 import org.junit.jupiter.api.Disabled;
@@ -11,6 +13,7 @@ import org.springframework.boot.test.system.OutputCaptureExtension;
 
 import java.time.Duration;
 
+import static com.barracuda.engine.test.assertJ.CustomAssertions.assertThat;
 import static com.barracuda.engine.test.builder.TestFlowBuilder.testFlow;
 import static org.assertj.core.api.Assertions.*;
 
@@ -42,15 +45,16 @@ public class FlowTest extends AbstractFlowTest{
     @Test
     void shouldExecuteIoAndCpuTasksOnDifferentExecutors() {
         //Note that testFlow by default runs IO tasks on virtual thread and cpu tasks on platform threads.
-        testFlow()
+        TestFlow testFlow = testFlow()
                 .ioTask("IoTask")
                 .cpuTask("CpuTask")
                 .build()
                 .startFlow()
                 .finishTask("IoTask")
-                .finishTask("CpuTask")
-                .expectTaskRanOnVirtualThread("IoTask")
-                .expectTaskRanOnPlatformThread("CpuTask");
+                .finishTask("CpuTask");
+
+        assertThat(testFlow).hasTaskSatisfying("IoTask", TestFlowAssert.TestTaskAssert::ranOnVirtualThread);
+        assertThat(testFlow).hasTaskSatisfying("CpuTask", TestFlowAssert.TestTaskAssert::ranOnPlatformThread);
     }
 
     @Disabled("need to figure out how to assert sequentiality")
@@ -61,10 +65,11 @@ public class FlowTest extends AbstractFlowTest{
     @Disabled("Already tested by FlowEventReplayingTest.shouldNotAllowSendingEventsToFlowThatIsRunning")
     @Test
     void shouldThrowISEWhenTryingToExecuteAlreadyRunningFlow() {
-        testFlow()
+        TestFlow testFlow = testFlow()
                 .ioTask("task")
                 .build()
-                .startFlow()
-                .assertThrows(TestFlow::startSync, error -> error.isInstanceOf(IllegalStateException.class));
+                .startFlow();
+
+        CustomAssertions.assertThatIllegalStateException().isThrownBy(testFlow::startSync);
     }
 }
