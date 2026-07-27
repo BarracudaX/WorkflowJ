@@ -27,14 +27,12 @@ public class TestFlowBuilder{
     protected final FlowBuilder builder;
     protected final AtomicLong counter; // the only reason we are using atomic is for easier sharing(not thread safety).
     protected final long flowID;
-    private final String name;
 
     /**
      * Use this constructor for subflows
      */
-    TestFlowBuilder(FlowBuilder builder,ExecutorService cpuExecutor,long flowID, ExecutorService ioExecutor,InMemoryEventCapturer eventCapturer,AtomicLong counter,String name) {
+    TestFlowBuilder(FlowBuilder builder,ExecutorService cpuExecutor,long flowID, ExecutorService ioExecutor,InMemoryEventCapturer eventCapturer,AtomicLong counter) {
         this.flowID = flowID;
-        this.name = name;
         this.cpuExecutor = cpuExecutor;
         this.ioExecutor = ioExecutor;
         this.builder = builder;
@@ -55,7 +53,7 @@ public class TestFlowBuilder{
         eventPublisher.subscribe(eventCapturer);
         builder.eventPublisher(eventPublisher);
 
-        this(builder,cpuExecutor, 1,ioExecutor,eventCapturer,new AtomicLong(1),null);
+        this(builder,cpuExecutor, 1,ioExecutor,eventCapturer,new AtomicLong(1));
     }
 
     public TestFlowBuilder parallel(Consumer<TestSubflowBuilder> consumer) {
@@ -92,7 +90,7 @@ public class TestFlowBuilder{
         public TestSubflowBuilder subflow(String subflowName, Consumer<TestFlowBuilder> consumer) {
             var subflowID = counter.incrementAndGet();
             parallelFlowBuilder.subflow(subflowID,(builder) -> {
-                var newBuilder = new TestFlowBuilder((FlowBuilder)builder,cpuExecutor, subflowID, ioExecutor,eventCapturer,counter,subflowName);
+                var newBuilder = new TestFlowBuilder((FlowBuilder)builder,cpuExecutor, subflowID, ioExecutor,eventCapturer,counter);
 
                 consumer.accept(newBuilder);
 
