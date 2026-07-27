@@ -1,10 +1,7 @@
 package com.barracuda.engine.chain;
 
+import com.barracuda.engine.event.Command;
 import com.barracuda.engine.event.ExecutionEvent;
-import com.barracuda.engine.event.ExecutionEvent.CommandEvent.Continue;
-import com.barracuda.engine.event.ExecutionEvent.CommandEvent.Prepare;
-import com.barracuda.engine.event.ExecutionEvent.CommandEvent.Reset;
-import com.barracuda.engine.event.ExecutionEvent.FlowEvent;
 import com.barracuda.engine.flow.Flow;
 import com.barracuda.engine.flow.FlowInterruptedException;
 import com.barracuda.engine.flow.FlowPrettyOutput;
@@ -23,6 +20,25 @@ public class ParallelNode implements ChainNode {
     public ParallelNode(List<Flow> subflows, ChainNode next) {
         this.subflows = subflows.stream().collect(Collectors.toMap(Flow::id, Function.identity()));
         this.next = next;
+    }
+
+
+    @Override
+    public void command(Command command) {
+        propagateCommand(command);
+    }
+
+    private void propagateCommand(Command command){
+        try (var scope = StructuredTaskScope.open()) {
+            subflows.values().forEach(subflow -> scope.fork( () -> subflow.command(command)));
+            scope.join();
+        } catch (Exception exception) {
+            handle(exception);
+        }
+
+        if (next != null) {
+            next.command(command);
+        }
     }
 
     @Override

@@ -1,12 +1,10 @@
 package com.barracuda.engine.flow;
 
-import com.barracuda.engine.event.ExecutionEvent;
 import com.barracuda.engine.event.ExecutionEvent.TaskEvent.TaskCompletedEvent;
 import com.barracuda.engine.event.ExecutionEvent.TaskEvent.TaskFailedEvent;
 import com.barracuda.engine.event.ExecutionEvent.TaskEvent.TaskPausedEvent;
 import com.barracuda.engine.event.ExecutionEvent.TaskEvent.TaskStartEvent;
 import com.barracuda.engine.test.flow.TestFlow;
-import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 import static com.barracuda.engine.test.assertJ.CustomAssertions.assertThat;

@@ -1,11 +1,11 @@
 package com.barracuda.engine.test.flow;
 
+import com.barracuda.engine.event.Command.Continue;
+import com.barracuda.engine.event.Command.Prepare;
+import com.barracuda.engine.event.Command.Reset;
 import com.barracuda.engine.event.ExecutionEvent;
-import com.barracuda.engine.event.ExecutionEvent.CommandEvent.Continue;
-import com.barracuda.engine.event.ExecutionEvent.CommandEvent.EnterReplayMode;
-import com.barracuda.engine.event.ExecutionEvent.CommandEvent.Prepare;
-import com.barracuda.engine.event.ExecutionEvent.CommandEvent.Reset;
 import com.barracuda.engine.event.ExecutionEvent.FlowEvent;
+import com.barracuda.engine.event.ExecutionEvent.FlowEvent.FlowStartedEvent;
 import com.barracuda.engine.event.ExecutionEvent.SubflowEvent;
 import com.barracuda.engine.event.ExecutionEvent.TaskEvent;
 import com.barracuda.engine.event.InMemoryEventCapturer;
@@ -16,17 +16,8 @@ import com.barracuda.engine.utility.AwaitilityUtils;
 import lombok.Getter;
 
 import java.time.Duration;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.SequencedCollection;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import java.util.*;
+import java.util.concurrent.*;
 
 public class TestFlow {
 
@@ -76,13 +67,9 @@ public class TestFlow {
         return flow.id();
     }
 
-    public TestFlow enterReplayMode(){
-        flow.event(new EnterReplayMode());
-        return this;
-    }
 
     public TestFlow prepare(){
-        flow.event(new Prepare());
+        flow.command(new Prepare());
         return this;
     }
 
@@ -92,24 +79,24 @@ public class TestFlow {
     }
 
     public TestFlow sendFlowStartedEvent(){
-        flow.event(new FlowEvent.FlowStartedEvent(flow.id()));
+        flow.event(new FlowStartedEvent(flow.id()));
         return this;
     }
 
     public TestFlow reset(){
-        flow.event(new Reset());
+        flow.command(new Reset());
         return this;
     }
 
     public TestFlow startFlow() {
-        flowTask = executorService.submit( () -> flow.event(new Continue()));
+        flowTask = executorService.submit( () -> flow.command(new Continue()));
         runCatching(() -> AwaitilityUtils.waitUntilFlowRunning(flow,Duration.ofSeconds(1)));
         return this;
     }
 
     public void startSync(){
         try {
-            executorService.submit( () -> flow.event(new Continue())).get();
+            executorService.submit( () -> flow.command(new Continue())).get();
         } catch (InterruptedException | ExecutionException e) {
             if(e.getCause() instanceof RuntimeException runtimeException) {
                 throw runtimeException;
@@ -119,7 +106,7 @@ public class TestFlow {
     }
 
     public TestFlow interruptFlow() {
-        flowTask.cancel(true);
+        runCatching(() -> flowTask.cancel(true));
         runCatching(() -> AwaitilityUtils.waitUntilFlowPaused(flow,Duration.ofSeconds(1)));
         return this;
     }
@@ -174,13 +161,24 @@ public class TestFlow {
 
         flow.prettyPrint(output);
 
-        return output
+        output
                 .getStringBuilder()
                 .append("\n\n")
                 .append("Recorded Events: [")
                 .append(eventCapturer.events())
-                .append("]")
-                .toString();
+                .append("]");
+
+        try {
+            flowTask.get(1, TimeUnit.SECONDS);
+        } catch (InterruptedException | ExecutionException e) {
+            output.getStringBuilder().append("\nFlow Exception: \n").append(org.apache.commons.lang3.exception.ExceptionUtils.getStackTrace(e)).append("\n");
+        }catch (CancellationException _){
+            // ignore cancellation
+        } catch (TimeoutException e) {
+            output.getStringBuilder().append("\nUnable to get flow result's in 1 second. The flow is still running.");
+        }
+
+        return output.toString();
     }
 
     public TestFlow waitUntilTaskFailed(String taskName) {

@@ -1,5 +1,6 @@
 package com.barracuda.engine.flow;
 
+import com.barracuda.engine.event.Command;
 import com.barracuda.engine.event.ExecutionEvent;
 import com.barracuda.engine.event.ExecutionEvent.FlowEvent.FlowCompletedEvent;
 import com.barracuda.engine.event.ExecutionEvent.FlowEvent.FlowFailedEvent;
@@ -18,6 +19,11 @@ public class SubflowDecorator implements Flow {
         this.subflow = subflow;
     }
 
+
+    @Override
+    public void command(Command command) {
+        subflow.command(command);
+    }
 
     @Override
     public void event(ExecutionEvent event) {

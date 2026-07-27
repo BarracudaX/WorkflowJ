@@ -1,6 +1,6 @@
 package com.barracuda.engine.flow;
 
-import com.barracuda.engine.event.ExecutionEvent.CommandEvent.Continue;
+import com.barracuda.engine.event.Command.Continue;
 import com.barracuda.engine.test.assertJ.CustomAssertions;
 import com.barracuda.engine.test.assertJ.TestFlowAssert;
 import com.barracuda.engine.test.flow.TestFlow;
@@ -30,7 +30,7 @@ public class FlowTest extends AbstractFlowTest{
                 .runnableTask(() -> System.out.println("3"), 3L)
                 .build();
 
-        ioTaskExecutor.submit(() -> flow.event(new Continue()));
+        ioTaskExecutor.submit(() -> flow.command(new Continue()));
 
         AwaitilityUtils.waitUntilFlowCompleted(flow, Duration.ofSeconds(1));
 

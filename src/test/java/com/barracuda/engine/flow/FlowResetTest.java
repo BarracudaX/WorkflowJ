@@ -1,6 +1,7 @@
 package com.barracuda.engine.flow;
 
 import com.barracuda.engine.event.ExecutionEvent.FlowEvent.FlowPausedEvent;
+import com.barracuda.engine.event.ExecutionEvent.FlowEvent.FlowResetEvent;
 import com.barracuda.engine.event.ExecutionEvent.FlowEvent.FlowStartedEvent;
 import com.barracuda.engine.test.flow.TestFlow;
 import org.assertj.core.api.Assertions;
@@ -60,17 +61,6 @@ public class FlowResetTest {
     }
 
     @Test
-    void shouldAllowResettingReplayedFlow() {
-        TestFlow testFlow = testFlow()
-                .ioTask("task")
-                .build()
-                .enterReplayMode()
-                .reset();
-
-        assertThat(testFlow).isReady();
-    }
-
-    @Test
     void shouldSendFlowStartedEventAgainAfterResetting() {
         TestFlow testFlow = testFlow()
                 .ioTask("task")
@@ -81,7 +71,7 @@ public class FlowResetTest {
 
         testFlow.interruptFlow().reset().startFlow(); // restart the flow
 
-        assertThat(testFlow).flowEventsSatisfy(events -> events.nextEventIs(FlowStartedEvent.class).nextEventIs(FlowPausedEvent.class).nextEventIs(FlowStartedEvent.class).andHasNoMoreEvents());
+        assertThat(testFlow).flowEventsSatisfy(events -> events.nextEventIs(FlowStartedEvent.class).nextEventIs(FlowPausedEvent.class).nextEventIs(FlowResetEvent.class).nextEventIs(FlowStartedEvent.class).andHasNoMoreEvents());
     }
 
     @Test

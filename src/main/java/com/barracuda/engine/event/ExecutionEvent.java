@@ -3,18 +3,7 @@ package com.barracuda.engine.event;
 
 public sealed interface ExecutionEvent {
 
-    sealed interface CommandEvent extends ExecutionEvent {
-
-        record Continue() implements CommandEvent{}
-
-        record Reset() implements CommandEvent{}
-
-        record EnterReplayMode() implements CommandEvent{ }
-
-        record Prepare() implements CommandEvent{ }
-    }
-
-    sealed interface SubflowEvent extends ExecutionEvent{
+    sealed interface SubflowEvent extends ExecutionEvent {
         long rootID();
 
         long subflowID();
@@ -28,8 +17,10 @@ public sealed interface ExecutionEvent {
         record SubflowPausedEvent(long rootID, long subflowID) implements SubflowEvent{ }
     }
 
-    sealed interface FlowEvent extends ExecutionEvent{
+    sealed interface FlowEvent extends ExecutionEvent {
         long flowID();
+
+        record FlowReadyEvent(long flowID) implements FlowEvent{ }
 
         record FlowStartedEvent(long flowID) implements FlowEvent { }
 
@@ -39,9 +30,10 @@ public sealed interface ExecutionEvent {
 
         record FlowPausedEvent(long flowID) implements FlowEvent{ }
 
+        record FlowResetEvent(long flowID) implements FlowEvent { }
     }
 
-    sealed interface TaskEvent extends ExecutionEvent{
+    sealed interface TaskEvent extends ExecutionEvent {
 
         long taskID();
 
@@ -53,5 +45,6 @@ public sealed interface ExecutionEvent {
 
         record TaskPausedEvent(long flowID, long taskID) implements TaskEvent { }
 
+        record TaskResetEvent(long flowID, long taskID) implements TaskEvent { }
     }
 }

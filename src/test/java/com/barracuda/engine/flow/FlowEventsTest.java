@@ -15,7 +15,6 @@ import java.util.stream.Stream;
 
 import static com.barracuda.engine.test.assertJ.CustomAssertions.assertThat;
 import static com.barracuda.engine.test.builder.TestFlowBuilder.testFlow;
-import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Tests related to flow events.

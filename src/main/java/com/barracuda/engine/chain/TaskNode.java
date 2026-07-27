@@ -1,20 +1,21 @@
 package com.barracuda.engine.chain;
 
+import com.barracuda.engine.event.Command;
+import com.barracuda.engine.event.Command.Continue;
+import com.barracuda.engine.event.Command.Prepare;
+import com.barracuda.engine.event.Command.Reset;
 import com.barracuda.engine.event.ExecutionEvent;
-import com.barracuda.engine.event.ExecutionEvent.CommandEvent.Continue;
-import com.barracuda.engine.event.ExecutionEvent.TaskEvent.TaskCompletedEvent;
-import com.barracuda.engine.event.ExecutionEvent.TaskEvent.TaskFailedEvent;
-import com.barracuda.engine.event.ExecutionEvent.TaskEvent.TaskPausedEvent;
-import com.barracuda.engine.event.ExecutionEvent.TaskEvent.TaskStartEvent;
+import com.barracuda.engine.event.ExecutionEvent.TaskEvent;
+import com.barracuda.engine.event.ExecutionEvent.TaskEvent.*;
+import com.barracuda.engine.event.FlowEventPublisher;
 import com.barracuda.engine.flow.FlowInterruptedException;
 import com.barracuda.engine.flow.FlowPrettyOutput;
 import com.barracuda.engine.task.Task;
 
-import java.util.ConcurrentModificationException;
+import java.util.Objects;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
@@ -37,53 +38,97 @@ public class TaskNode<I,R> implements ChainNode{
         this.executor = executor;
     }
 
+
     @Override
-    public void event(ExecutionEvent event) {
-        //add more cases for supplier and consumer in the future.
-        switch (event){
-            case TaskFailedEvent ev when ev.taskID() == task.id() -> throw ev.exception();
-            case TaskStartEvent ev when ev.taskID() == task.id() -> {
-                if(havePublishedTaskStartedEvent){
-                    throw new IllegalStateException("Duplicate task started event");
-                }
-                havePublishedTaskStartedEvent = true;
-                return;
-            }
-            case Continue _ -> { }
-            default -> {
-                if(next != null){
-                    next.event(event);
-                }
-                return;
-            }
+    public void command(Command command) {
+        switch (command) {
+            case Continue continueCommand -> handleContinueCommand(continueCommand);
+            case Prepare _, Reset _ -> propagateCommand(command);
+        }
+    }
+
+    private void handleContinueCommand(Continue continueCommand) {
+
+        TaskStartEvent taskStartedEvent = new TaskStartEvent(FLOW_CONTEXT.get().flowID(), task.id());
+        FlowEventPublisher eventPublisher = FLOW_CONTEXT.get().flowEventPublisher();
+
+        if (!havePublishedTaskStartedEvent) {
+            eventPublisher.publish(taskStartedEvent);
         }
 
-        //should get to this point only if the event was the ContinueEvent.
+        event(taskStartedEvent);
 
-        var flowID = FLOW_CONTEXT.get().flowID();
-        var eventPublisher = FLOW_CONTEXT.get().flowEventPublisher();
+        executeTask();
 
-        eventPublisher.publish(new TaskStartEvent(flowID,task.id()));
+        propagateCommand(continueCommand);
+    }
+
+    private void executeTask(){
+        FlowEventPublisher eventPublisher = FLOW_CONTEXT.get().flowEventPublisher();
+        long flowID = FLOW_CONTEXT.get().flowID();
 
         I input = taskInputSupplier.get();
-
         Future<R> taskResult = null;
         R result = null;
         try {
-             taskResult = executor.submit(() -> task.execute(input));
-             result = taskResult.get();
+            taskResult = executor.submit(() -> task.execute(input));
+            result = taskResult.get();
         } catch (Exception ex) {
-            handle(ex,taskResult,flowID);
+            if (taskResult != null) {
+                taskResult.cancel(true);
+            }
+            handle(ex,flowID);
         }
-
-        eventPublisher.publish(new TaskCompletedEvent(flowID,task.id()));
 
         taskOutputConsumer.accept(result);
 
-        if (next != null) {
-            next.event(event);
-        }
+        TaskCompletedEvent taskCompletedEvent = new TaskCompletedEvent(flowID, task.id());
+        eventPublisher.publish(taskCompletedEvent);
+        event(taskCompletedEvent);
+    }
 
+    private void propagateCommand(Command command) {
+        if (next != null) {
+            next.command(command);
+        }
+    }
+
+
+    @Override
+    public void event(ExecutionEvent event) {
+        if (Objects.requireNonNull(event) instanceof TaskEvent ev && ev.taskID() == task.id()) {
+            taskEvent(ev);
+        } else {
+            if (next != null) {
+                next.event(event);
+            }
+        }
+    }
+
+    private void taskEvent(TaskEvent taskEvent) {
+        switch (taskEvent) {
+            case TaskStartEvent ev -> taskStartedEvent(ev);
+            case TaskFailedEvent ev -> taskFailedEvent(ev);
+            case TaskPausedEvent ev -> taskPausedEvent(ev);
+            case TaskCompletedEvent ev -> {}
+            case TaskResetEvent ev -> taskResetEvent(ev);
+        }
+    }
+
+    private void taskResetEvent(TaskResetEvent taskResetEvent) {
+        havePublishedTaskStartedEvent = false;
+    }
+
+    private void taskPausedEvent(ExecutionEvent event) {
+
+    }
+
+    private void taskFailedEvent(TaskFailedEvent taskFailedEvent) {
+        throw taskFailedEvent.exception();
+    }
+
+    private void taskStartedEvent(TaskStartEvent taskStartEvent) {
+        havePublishedTaskStartedEvent = true;
     }
 
     @Override
@@ -106,25 +151,28 @@ public class TaskNode<I,R> implements ChainNode{
         output.decreaseLevel();
     }
 
-    private void handle(Throwable cause, Future<R> taskFuture,long flowID) {
+    private void handle(Throwable cause,long flowID) {
         switch (cause){
-            case ExecutionException ex -> handle(ex.getCause(),taskFuture,flowID);
-            case InterruptedException ex -> handleInterrupted(taskFuture, ex,flowID);
-            case RuntimeException ex -> handleRuntimeException(ex,flowID);
-            default -> handleRuntimeException(new RuntimeException(cause),flowID);
+            case ExecutionException ex -> handle(ex.getCause(),flowID);
+            case FlowInterruptedException ex -> {
+                Thread.currentThread().interrupt();
+
+                TaskPausedEvent taskpausedEvent = new TaskPausedEvent(flowID, task.id());
+
+                FLOW_CONTEXT.get().flowEventPublisher().publish(taskpausedEvent);
+
+                event(taskpausedEvent);
+
+                throw ex;
+            }
+            case InterruptedException ex -> handle(new FlowInterruptedException("Task Interrupted",ex), flowID);
+            case RuntimeException ex -> {
+                TaskFailedEvent taskFailedEvent = new TaskFailedEvent(flowID, task.id(), ex);
+                FLOW_CONTEXT.get().flowEventPublisher().publish(taskFailedEvent);
+                event(taskFailedEvent);
+            }
+            default -> handle(new RuntimeException(cause),flowID);
         }
-    }
-
-    private void handleInterrupted(Future<R> taskFuture, InterruptedException ex,long flowID) {
-        Thread.currentThread().interrupt();
-        taskFuture.cancel(true);
-        FLOW_CONTEXT.get().flowEventPublisher().publish(new TaskPausedEvent(flowID,task.id()));
-        throw new FlowInterruptedException("Flow Interrupted", ex);
-    }
-
-    private void handleRuntimeException(RuntimeException ex,long flowID) {
-        FLOW_CONTEXT.get().flowEventPublisher().publish(new TaskFailedEvent(flowID,task.id(), ex));
-        throw ex;
     }
 
 }

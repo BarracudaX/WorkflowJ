@@ -1,10 +1,6 @@
 package com.barracuda.engine.flow;
 
 import com.barracuda.engine.event.ExecutionEvent;
-import com.barracuda.engine.event.ExecutionEvent.CommandEvent.Continue;
-import com.barracuda.engine.event.ExecutionEvent.CommandEvent.EnterReplayMode;
-import com.barracuda.engine.event.ExecutionEvent.CommandEvent.Prepare;
-import com.barracuda.engine.event.ExecutionEvent.CommandEvent.Reset;
 import com.barracuda.engine.event.ExecutionEvent.FlowEvent.FlowCompletedEvent;
 import com.barracuda.engine.event.ExecutionEvent.FlowEvent.FlowFailedEvent;
 import com.barracuda.engine.event.ExecutionEvent.FlowEvent.FlowPausedEvent;
@@ -111,7 +107,7 @@ public class SubflowDecoratorTest {
 
     private static List<ExecutionEvent> nonTranslatableEvents(){
         return List.of(
-                new Continue(),new Reset(),new EnterReplayMode(),new Prepare(), new FlowStartedEvent(subflowID),new FlowCompletedEvent(subflowID),new FlowFailedEvent(subflowID,null),new FlowPausedEvent(subflowID),
+                new FlowStartedEvent(subflowID),new FlowCompletedEvent(subflowID),new FlowFailedEvent(subflowID,null),new FlowPausedEvent(subflowID),
                 new TaskStartEvent(subflowID,110000),new TaskCompletedEvent(subflowID,10000), new TaskFailedEvent(subflowID,10000,null), new TaskPausedEvent(subflowID,10000)
         );
     }

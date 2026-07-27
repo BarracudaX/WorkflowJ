@@ -54,7 +54,7 @@ public class TestFlowAssert extends AbstractAssert<TestFlowAssert, TestFlow> {
     }
 
     public TestFlowAssert isReady(){
-        return run(() -> "Expected the flow to be in READY state, but wasn't.", () -> Assertions.assertThat(actual.getFlow().status()).isEqualTo(FlowStatus.READY));
+        return run(() -> "Expected the flow to be in READY state, but wasn't.", () -> Assertions.assertThat(actual.getFlow().status()).isEqualTo(FlowStatus.READY_TO_CONTINUE));
     }
 
     public TestFlowAssert hasTaskSatisfying(String taskName, Consumer<TestTaskAssert> taskVerifier) {

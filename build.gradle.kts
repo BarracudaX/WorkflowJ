@@ -23,6 +23,7 @@ dependencies {
     implementation("org.apache.fory:fory-core:1.3.0")
     implementation("org.mapstruct:mapstruct:1.6.3")
     implementation("org.slf4j:slf4j-api:2.0.18")
+    implementation("org.apache.commons:commons-lang3:3.20.0")
 
     runtimeOnly("org.postgresql:postgresql")
 
@@ -47,7 +48,7 @@ tasks.withType<BootJar>{
 }
 
 tasks.withType<Jar>{
-    enabled = true;
+    enabled = true
     manifest{
 
     }
