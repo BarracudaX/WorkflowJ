@@ -2,7 +2,6 @@ package com.barracuda.engine.flow;
 
 import com.barracuda.engine.event.Command.Continue;
 import com.barracuda.engine.test.assertJ.CustomAssertions;
-import com.barracuda.engine.test.assertJ.TestFlowAssert;
 import com.barracuda.engine.test.flow.TestFlow;
 import com.barracuda.engine.utility.AwaitilityUtils;
 import org.junit.jupiter.api.Disabled;
@@ -40,21 +39,6 @@ public class FlowTest extends AbstractFlowTest{
     @Test
     void shouldAllowCreationOfEmptyFlow() {
         assertThatCode(flowBuilder::build).doesNotThrowAnyException();
-    }
-
-    @Test
-    void shouldExecuteIoAndCpuTasksOnDifferentExecutors() {
-        //Note that testFlow by default runs IO tasks on virtual thread and cpu tasks on platform threads.
-        TestFlow testFlow = testFlow()
-                .ioTask("IoTask")
-                .cpuTask("CpuTask")
-                .build()
-                .startFlow()
-                .finishTask("IoTask")
-                .finishTask("CpuTask");
-
-        assertThat(testFlow).hasTaskSatisfying("IoTask", TestFlowAssert.TestTaskAssert::ranOnVirtualThread);
-        assertThat(testFlow).hasTaskSatisfying("CpuTask", TestFlowAssert.TestTaskAssert::ranOnPlatformThread);
     }
 
     @Disabled("need to figure out how to assert sequentiality")

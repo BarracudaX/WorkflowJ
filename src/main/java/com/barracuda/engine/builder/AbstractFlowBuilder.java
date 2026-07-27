@@ -3,14 +3,12 @@ package com.barracuda.engine.builder;
 import com.barracuda.engine.chain.ActionTaskNode;
 import com.barracuda.engine.chain.ChainNode;
 import com.barracuda.engine.chain.ParallelNode;
-import com.barracuda.engine.chain.DataTaskNode;
 import com.barracuda.engine.event.FlowEventPublisher;
 import com.barracuda.engine.event.NoOpEvenPublisher;
 import com.barracuda.engine.event.SubflowEventPublisherDecorator;
 import com.barracuda.engine.flow.Flow;
 import com.barracuda.engine.flow.SubflowDecorator;
 import com.barracuda.engine.task.ActionTask;
-import com.barracuda.engine.task.DataTask;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -51,31 +49,9 @@ public abstract class AbstractFlowBuilder<T extends AbstractFlowBuilder<T>> {
         return self();
     }
 
-    public <I, R> T ioDataTask(DataTask<I, R> task, Supplier<I> inputSupplier, Consumer<R> outputConsumer) {
-        chainNodes.add( (next) -> new DataTaskNode<>(next,task,inputSupplier,outputConsumer, ioExecutor));
-        return self();
-    }
-
-    public <I, R> T cpuDataTask(DataTask<I, R> task, Supplier<I> inputSupplier, Consumer<R> outputConsumer) {
-        chainNodes.add( (next) -> new DataTaskNode<>(next,task,inputSupplier,outputConsumer,cpuExecutor));
-        return self();
-    }
-
-    public <I, R> T cpuDataTask(DataTask<I, R> task) {
-        return cpuDataTask(task, nullSupplier(), noopConsumer());
-    }
-
-    public <I, R> T ioDataTask(DataTask<I, R> task) {
-        return ioDataTask(task, nullSupplier(), noopConsumer());
-    }
-
     public T actionTask(ActionTask actionTask) {
         chainNodes.add((next) -> new ActionTaskNode(actionTask, next, ioExecutor));
         return self();
-    }
-
-    public <I,R> T ioDataTask(DataTask<I,R> task, Supplier<I> supplier){
-        return ioDataTask(task,supplier,noopConsumer());
     }
 
     public T runnableTask(Runnable task, long id) {

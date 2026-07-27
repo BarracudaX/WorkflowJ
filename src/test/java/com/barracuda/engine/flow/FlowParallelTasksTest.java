@@ -27,9 +27,9 @@ public class FlowParallelTasksTest extends AbstractFlowTest{
         var flow = flowBuilder
                 .parallel(parallel ->
                         parallel
-                                .subflow(2L,subflow -> subflow.ioDataTask(new ParallelTestTask(readinessLatch, barrierLatch, 1L)))
-                                .subflow(3L,subflow -> subflow.ioDataTask(new ParallelTestTask(readinessLatch, barrierLatch, 2L)))
-                                .subflow(4L,subflow -> subflow.ioDataTask(new ParallelTestTask(readinessLatch, barrierLatch, 3L)))
+                                .subflow(2L,subflow -> subflow.actionTask(new ParallelTestTask(readinessLatch, barrierLatch, 1L)))
+                                .subflow(3L,subflow -> subflow.actionTask(new ParallelTestTask(readinessLatch, barrierLatch, 2L)))
+                                .subflow(4L,subflow -> subflow.actionTask(new ParallelTestTask(readinessLatch, barrierLatch, 3L)))
                 ).build();
 
         ioTaskExecutor.submit(() -> flow.command(new Continue()));

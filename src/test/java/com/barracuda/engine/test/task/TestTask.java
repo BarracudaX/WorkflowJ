@@ -2,30 +2,19 @@ package com.barracuda.engine.test.task;
 
 import com.barracuda.engine.event.ExecutionEvent.TaskEvent;
 import com.barracuda.engine.task.ActionTask;
-import com.barracuda.engine.task.DataTask;
-import com.barracuda.engine.test.task.TestTaskInput.TestTaskDataInput;
-import com.barracuda.engine.test.task.TestTaskInput.TestTaskNullInput;
 
-import java.time.Duration;
 import java.util.Deque;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicReference;
 
-import static com.barracuda.engine.utility.AwaitilityUtils.*;
-
 /**
  * A task that blocks on a latch that can be asked to either finish normally or with an exception.
  * Note that before calling finish or fail, use waiUntilRunning to verify that the task runs; otherwise, an IllegalStateException will be thrown because the task isn't running.
  * This class is meant for testing purposes only. Note that this class isn't how tasks typically should be implemented; specifically, tasks shouldn't carry any state that is relevant to the execution of their logic.
  */
-public final class TestTask<I> implements DataTask<I, Void>, ActionTask {
-
-    @Override
-    public void execute() {
-        execute(null);
-    }
+public final class TestTask<I> implements ActionTask {
 
     public enum TaskThread {
         VIRTUAL, PLATFORM, NONE
@@ -34,7 +23,6 @@ public final class TestTask<I> implements DataTask<I, Void>, ActionTask {
 
     private final CountDownLatch latch = new CountDownLatch(1);
     private volatile RuntimeException failException;
-    private final Deque<TestTaskInput<I>> input_history = new ConcurrentLinkedDeque<>();
     private final long id;
     private final String name;
     private final Deque<TaskEvent> events = new ConcurrentLinkedDeque<>();
@@ -46,18 +34,12 @@ public final class TestTask<I> implements DataTask<I, Void>, ActionTask {
     }
 
     @Override
-    public Void execute(I input) {
+    public void execute() {
         thread_history.add(Thread.currentThread());
 
         state.set(TestTaskState.RUNNING);
 
         try {
-            if (input == null) {
-                input_history.add(new TestTaskNullInput<>());
-            }else{
-                input_history.add(new TestTaskDataInput<>(input));
-            }
-
             latch.await();
             if (failException != null) {
                 state.set(TestTaskState.FAILED);
@@ -67,8 +49,6 @@ public final class TestTask<I> implements DataTask<I, Void>, ActionTask {
             state.set(TestTaskState.INTERRUPTED);
             throw new RuntimeException(ex);
         }
-
-        return null;
     }
 
     @Override
@@ -95,12 +75,6 @@ public final class TestTask<I> implements DataTask<I, Void>, ActionTask {
         return this;
     }
 
-    public void waitUntilCompleted(Duration duration) {
-        waitUntilTestTaskCompleted(this, duration);
-    }
-
-    public void waitUntilFailed(Duration duration) { waitUntilTestTaskFailed(this, duration);}
-
     public TestTaskState state() {
         return state.get();
     }
@@ -115,16 +89,6 @@ public final class TestTask<I> implements DataTask<I, Void>, ActionTask {
             return TaskThread.VIRTUAL;
         } else {
             return TaskThread.PLATFORM;
-        }
-    }
-
-    public I lastInput() {
-        TestTaskInput<I> lastInput = input_history.getLast();
-
-        if (lastInput instanceof TestTaskDataInput(I input)) {
-            return input;
-        }else{
-            return null;
         }
     }
 
@@ -144,7 +108,6 @@ public final class TestTask<I> implements DataTask<I, Void>, ActionTask {
                 "state=" + state +
                 ", latch=" + latch +
                 ", failException=" + failException +
-                ", inputs=" + input_history +
                 ", id=" + id +
                 ", name='" + name + '\'' +
                 ", events=" + events +

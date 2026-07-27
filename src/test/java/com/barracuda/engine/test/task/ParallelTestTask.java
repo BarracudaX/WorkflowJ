@@ -1,19 +1,18 @@
 package com.barracuda.engine.test.task;
 
-import com.barracuda.engine.task.DataTask;
+import com.barracuda.engine.task.ActionTask;
 
 import java.util.concurrent.CountDownLatch;
 
-public record ParallelTestTask(CountDownLatch notifyReadyLatch, CountDownLatch barrierLatch, long id) implements DataTask<Void, Void> {
+public record ParallelTestTask(CountDownLatch notifyReadyLatch, CountDownLatch barrierLatch, long id) implements ActionTask {
 
     @Override
-    public Void execute(Void input) {
+    public void execute() {
         notifyReadyLatch.countDown();
         try {
             barrierLatch.await();
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }
-        return null;
     }
 }
