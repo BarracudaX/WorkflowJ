@@ -13,12 +13,12 @@ import static com.barracuda.engine.test.builder.TestFlowBuilder.testFlow;
 /**
  * Tests related to task events
  */
-public class TaskEventTests {
+public class TaskEventsTest {
 
     @Test
     void shouldPublishTaskStartedEventWhenExecutingTheTask() {
         TestFlow testFlow = testFlow()
-                .ioTask("test")
+                .actionTask("test")
                 .build()
                 .startFlow();
 
@@ -28,7 +28,7 @@ public class TaskEventTests {
     @Test
     void shouldPublishTaskCompletedEventWhenTaskFinishesNormally() {
         TestFlow testFlow = testFlow()
-                .ioTask("test")
+                .actionTask("test")
                 .build()
                 .startFlow()
                 .finishTask("test");
@@ -41,7 +41,7 @@ public class TaskEventTests {
         var exception = new RuntimeException("FAILED");
 
         TestFlow testFlow = testFlow()
-                .ioTask("test")
+                .actionTask("test")
                 .build()
                 .startFlow()
                 .failTask("test", exception);
@@ -56,7 +56,7 @@ public class TaskEventTests {
     @Test
     void shouldPublishTaskPausedEventWhenTaskInterrupted() {
         TestFlow testFlow = testFlow()
-                .ioTask("test")
+                .actionTask("test")
                 .build()
                 .startFlow()
                 .interruptFlow();

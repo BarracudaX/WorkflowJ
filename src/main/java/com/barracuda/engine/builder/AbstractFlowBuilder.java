@@ -1,14 +1,16 @@
 package com.barracuda.engine.builder;
 
+import com.barracuda.engine.chain.ActionTaskNode;
 import com.barracuda.engine.chain.ChainNode;
 import com.barracuda.engine.chain.ParallelNode;
-import com.barracuda.engine.chain.TaskNode;
+import com.barracuda.engine.chain.DataTaskNode;
 import com.barracuda.engine.event.FlowEventPublisher;
 import com.barracuda.engine.event.NoOpEvenPublisher;
 import com.barracuda.engine.event.SubflowEventPublisherDecorator;
 import com.barracuda.engine.flow.Flow;
 import com.barracuda.engine.flow.SubflowDecorator;
-import com.barracuda.engine.task.Task;
+import com.barracuda.engine.task.ActionTask;
+import com.barracuda.engine.task.DataTask;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -49,37 +51,35 @@ public abstract class AbstractFlowBuilder<T extends AbstractFlowBuilder<T>> {
         return self();
     }
 
-    public <I, R> T ioTask(Task<I, R> task, Supplier<I> inputSupplier, Consumer<R> outputConsumer) {
-        chainNodes.add( (next) -> new TaskNode<>(next,task,inputSupplier,outputConsumer, ioExecutor));
+    public <I, R> T ioDataTask(DataTask<I, R> task, Supplier<I> inputSupplier, Consumer<R> outputConsumer) {
+        chainNodes.add( (next) -> new DataTaskNode<>(next,task,inputSupplier,outputConsumer, ioExecutor));
         return self();
     }
 
-    public <I, R> T cpuTask(Task<I, R> task, Supplier<I> inputSupplier, Consumer<R> outputConsumer) {
-        chainNodes.add( (next) -> new TaskNode<>(next,task,inputSupplier,outputConsumer,cpuExecutor));
+    public <I, R> T cpuDataTask(DataTask<I, R> task, Supplier<I> inputSupplier, Consumer<R> outputConsumer) {
+        chainNodes.add( (next) -> new DataTaskNode<>(next,task,inputSupplier,outputConsumer,cpuExecutor));
         return self();
     }
 
-    public <I, R> T cpuTask(Task<I, R> task) {
-        return cpuTask(task, nullSupplier(), noopConsumer());
+    public <I, R> T cpuDataTask(DataTask<I, R> task) {
+        return cpuDataTask(task, nullSupplier(), noopConsumer());
     }
 
-    public <I, R> T ioTask(Task<I, R> task) {
-        return ioTask(task, nullSupplier(), noopConsumer());
+    public <I, R> T ioDataTask(DataTask<I, R> task) {
+        return ioDataTask(task, nullSupplier(), noopConsumer());
     }
 
-    public <I,R> T ioTask(Task<I,R> task, Supplier<I> supplier){
-        return ioTask(task,supplier,noopConsumer());
+    public T actionTask(ActionTask actionTask) {
+        chainNodes.add((next) -> new ActionTaskNode(actionTask, next, ioExecutor));
+        return self();
     }
 
-    /**
-     * Configures a task with default input provider(provides null) and default output consumer(does nothing with the result).
-     * This method is useful for tasks that have no input and produce no output. For example, for test tasks or for tasks that do execute deterministic code(do not rely on any input) with side effects.
-     * This method shouldn't be used unless absolutely needed. Task should be pure function that depend on their input and produce output.
-     * @param task the configured task
-     * @return this builder
-     */
+    public <I,R> T ioDataTask(DataTask<I,R> task, Supplier<I> supplier){
+        return ioDataTask(task,supplier,noopConsumer());
+    }
+
     public T runnableTask(Runnable task, long id) {
-        return ioTask(Task.fromRunnable(task,id), nullSupplier(), noopConsumer());
+        return actionTask(ActionTask.fromRunnable(task,id));
     }
 
     public static <T> Consumer<T> noopConsumer(){

@@ -15,7 +15,7 @@ public class FlowResetTest {
     @Test
     void shouldNotAllowResettingRunningFlow() {
         TestFlow testFlow = testFlow()
-                .ioTask("task")
+                .actionTask("task")
                 .build()
                 .startFlow();
 
@@ -25,7 +25,7 @@ public class FlowResetTest {
     @Test
     void shouldAllowResettingCompletedFlow() {
         TestFlow testFlow = testFlow()
-                .ioTask("task")
+                .actionTask("task")
                 .build()
                 .startFlow()
                 .finishTask("task");
@@ -40,7 +40,7 @@ public class FlowResetTest {
     @Test
     void shouldAllowResettingFailedFlow() {
         TestFlow testFlow = testFlow()
-                .ioTask("task")
+                .actionTask("task")
                 .build()
                 .startFlow()
                 .failTask("task", new RuntimeException("FAILED"));
@@ -55,7 +55,7 @@ public class FlowResetTest {
     @Test
     void shouldAllowResettingPausedFlow() {
         TestFlow testFlow = testFlow()
-                .ioTask("task")
+                .actionTask("task")
                 .build()
                 .startFlow()
                 .interruptFlow();
@@ -70,7 +70,7 @@ public class FlowResetTest {
     @Test
     void shouldSendFlowStartedEventWhenStartingFlowAgainAfterResetting() {
         TestFlow testFlow = testFlow()
-                .ioTask("task")
+                .actionTask("task")
                 .build()
                 .startFlow()
                 .interruptFlow();
@@ -88,8 +88,8 @@ public class FlowResetTest {
     void shouldResetSubflows() {
         TestFlow testFlow = testFlow()
                 .parallel(parallel -> parallel
-                                .subflow("Subflow1", subflow -> subflow.ioTask("task1"))
-                                .subflow("Subflow2", subflow -> subflow.ioTask("task2"))
+                                .subflow("Subflow1", subflow -> subflow.actionTask("task1"))
+                                .subflow("Subflow2", subflow -> subflow.actionTask("task2"))
                 ).build();
 
         testFlow.startFlow().failTask("task2", new RuntimeException("FAILED"));
@@ -111,8 +111,8 @@ public class FlowResetTest {
         TestFlow testFlow = testFlow()
                 .parallel(parallel ->
                         parallel
-                                .subflow("Subflow1", subflow -> subflow.ioTask("task1"))
-                                .subflow("Subflow2", subflow -> subflow.parallel(parallelL2 -> parallelL2.subflow("Subflow3",subflowL2 -> subflowL2.ioTask("task2"))))
+                                .subflow("Subflow1", subflow -> subflow.actionTask("task1"))
+                                .subflow("Subflow2", subflow -> subflow.parallel(parallelL2 -> parallelL2.subflow("Subflow3",subflowL2 -> subflowL2.actionTask("task2"))))
                 )
                 .build();
 

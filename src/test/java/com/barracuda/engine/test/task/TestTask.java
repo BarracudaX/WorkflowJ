@@ -1,7 +1,8 @@
 package com.barracuda.engine.test.task;
 
 import com.barracuda.engine.event.ExecutionEvent.TaskEvent;
-import com.barracuda.engine.task.Task;
+import com.barracuda.engine.task.ActionTask;
+import com.barracuda.engine.task.DataTask;
 import com.barracuda.engine.test.task.TestTaskInput.TestTaskDataInput;
 import com.barracuda.engine.test.task.TestTaskInput.TestTaskNullInput;
 
@@ -19,7 +20,12 @@ import static com.barracuda.engine.utility.AwaitilityUtils.*;
  * Note that before calling finish or fail, use waiUntilRunning to verify that the task runs; otherwise, an IllegalStateException will be thrown because the task isn't running.
  * This class is meant for testing purposes only. Note that this class isn't how tasks typically should be implemented; specifically, tasks shouldn't carry any state that is relevant to the execution of their logic.
  */
-public final class TestTask<I> implements Task<I, Void> {
+public final class TestTask<I> implements DataTask<I, Void>, ActionTask {
+
+    @Override
+    public void execute() {
+        execute(null);
+    }
 
     public enum TaskThread {
         VIRTUAL, PLATFORM, NONE

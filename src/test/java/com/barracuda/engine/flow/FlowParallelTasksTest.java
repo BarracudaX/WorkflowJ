@@ -27,9 +27,9 @@ public class FlowParallelTasksTest extends AbstractFlowTest{
         var flow = flowBuilder
                 .parallel(parallel ->
                         parallel
-                                .subflow(2L,subflow -> subflow.ioTask(new ParallelTestTask(readinessLatch, barrierLatch, 1L)))
-                                .subflow(3L,subflow -> subflow.ioTask(new ParallelTestTask(readinessLatch, barrierLatch, 2L)))
-                                .subflow(4L,subflow -> subflow.ioTask(new ParallelTestTask(readinessLatch, barrierLatch, 3L)))
+                                .subflow(2L,subflow -> subflow.ioDataTask(new ParallelTestTask(readinessLatch, barrierLatch, 1L)))
+                                .subflow(3L,subflow -> subflow.ioDataTask(new ParallelTestTask(readinessLatch, barrierLatch, 2L)))
+                                .subflow(4L,subflow -> subflow.ioDataTask(new ParallelTestTask(readinessLatch, barrierLatch, 3L)))
                 ).build();
 
         ioTaskExecutor.submit(() -> flow.command(new Continue()));
@@ -46,9 +46,9 @@ public class FlowParallelTasksTest extends AbstractFlowTest{
         var exception = new RuntimeException("FAILED");
         TestFlow testFlow = testFlow()
                 .parallel(parallel -> parallel
-                        .subflow("Subflow1", subflow -> subflow.ioTask("ParallelFailTask"))
-                        .subflow("Subflow2", subflow -> subflow.ioTask("ParallelTask2"))
-                        .subflow("Subflow3", subflow -> subflow.ioTask("ParallelTask3"))
+                        .subflow("Subflow1", subflow -> subflow.actionTask("ParallelFailTask"))
+                        .subflow("Subflow2", subflow -> subflow.actionTask("ParallelTask2"))
+                        .subflow("Subflow3", subflow -> subflow.actionTask("ParallelTask3"))
                 )
                 .build()
                 .startFlow()
@@ -61,9 +61,9 @@ public class FlowParallelTasksTest extends AbstractFlowTest{
     void shouldCancelParallelTasksOfASubflowIfOneOfThemFails() {
         TestFlow testFlow = testFlow()
                 .parallel(parallel -> parallel
-                        .subflow("Subflow1", subflow -> subflow.ioTask("parallelTask1"))
-                        .subflow("Subflow2", subflow -> subflow.ioTask("parallelTask2"))
-                        .subflow("Subflow3", subflow -> subflow.ioTask("parallelTask3"))
+                        .subflow("Subflow1", subflow -> subflow.actionTask("parallelTask1"))
+                        .subflow("Subflow2", subflow -> subflow.actionTask("parallelTask2"))
+                        .subflow("Subflow3", subflow -> subflow.actionTask("parallelTask3"))
                 )
                 .build()
                 .startFlow()
@@ -76,8 +76,8 @@ public class FlowParallelTasksTest extends AbstractFlowTest{
     @Test
     void shouldNotRunNextTaskWhenParallelSubflowFails() {
         TestFlow testFlow = testFlow()
-                .parallel(parallel -> parallel.subflow("Subflow1", subflow -> subflow.ioTask("parallelTask1")))
-                .ioTask("NextTask")
+                .parallel(parallel -> parallel.subflow("Subflow1", subflow -> subflow.actionTask("parallelTask1")))
+                .actionTask("NextTask")
                 .build()
                 .startFlow()
                 .failTask("parallelTask1", new RuntimeException("FAILED"));
@@ -88,9 +88,9 @@ public class FlowParallelTasksTest extends AbstractFlowTest{
     @Test
     void shouldExecuteTheNextTaskWhenParallelSubflowsComplete() {
         TestFlow testFlow = testFlow()
-                .parallel(parallel -> parallel.subflow("Subflow1", subflow -> subflow.ioTask("parallelTask1")))
-                .parallel(parallel -> parallel.subflow("Subflow2", subflow -> subflow.ioTask("parallelTask2")))
-                .ioTask("NextTask")
+                .parallel(parallel -> parallel.subflow("Subflow1", subflow -> subflow.actionTask("parallelTask1")))
+                .parallel(parallel -> parallel.subflow("Subflow2", subflow -> subflow.actionTask("parallelTask2")))
+                .actionTask("NextTask")
                 .build()
                 .startFlow()
                 .finishTask("parallelTask1")

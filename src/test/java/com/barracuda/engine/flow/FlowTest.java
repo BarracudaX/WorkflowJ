@@ -66,7 +66,7 @@ public class FlowTest extends AbstractFlowTest{
     @Test
     void shouldThrowISEWhenTryingToExecuteAlreadyRunningFlow() {
         TestFlow testFlow = testFlow()
-                .ioTask("task")
+                .actionTask("task")
                 .build()
                 .startFlow();
 

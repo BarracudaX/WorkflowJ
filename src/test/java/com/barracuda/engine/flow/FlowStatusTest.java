@@ -14,7 +14,7 @@ public class FlowStatusTest {
     @Test
     void newlyCreatedFlowShouldBeInReadyState() {
         TestFlow flow = testFlow()
-                .ioTask("Task")
+                .actionTask("Task")
                 .build();
 
         assertThat(flow).isReady();
@@ -23,7 +23,7 @@ public class FlowStatusTest {
     @Test
     void runningFlowShouldHaveRunningState() {
         var testFlow = testFlow()
-                .ioTask("Task")
+                .actionTask("Task")
                 .build()
                 .startFlow();
 
@@ -33,7 +33,7 @@ public class FlowStatusTest {
     @Test
     void shouldHaveCompletedStateOnceFinished() {
         var testFlow = testFlow()
-                .ioTask("Task")
+                .actionTask("Task")
                 .build()
                 .startFlow()
                 .finishTask("Task");
@@ -46,7 +46,7 @@ public class FlowStatusTest {
         var exception = new RuntimeException("FAILED");
 
         var testFlow = testFlow()
-                .ioTask("FailTask")
+                .actionTask("FailTask")
                 .build()
                 .startFlow()
                 .failTask("FailTask", exception);
@@ -57,7 +57,7 @@ public class FlowStatusTest {
     @Test
     void shouldHavePausedStateWhenInterrupted() {
         var testFlow = testFlow()
-                .ioTask("FirstTask")
+                .actionTask("FirstTask")
                 .build()
                 .startFlow()
                 .interruptFlow();

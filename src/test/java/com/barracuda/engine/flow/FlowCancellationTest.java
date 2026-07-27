@@ -16,7 +16,7 @@ public class FlowCancellationTest {
     @Test
     void shouldCancelRunningTaskWhenPaused() {
         TestFlow testFlow = testFlow()
-                .ioTask("FirstTask")
+                .actionTask("FirstTask")
                 .build()
                 .startFlow()
                 .interruptFlow()

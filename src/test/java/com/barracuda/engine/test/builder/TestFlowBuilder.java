@@ -78,10 +78,18 @@ public class TestFlowBuilder{
         return this;
     }
 
+    public TestFlowBuilder actionTask(String taskName) {
+        TestTask<Void> task = new TestTask<>(counter.incrementAndGet(),taskName);
+        saveTask(taskName,task, Void.class);
+        builder.actionTask(task);
+
+        return this;
+    }
+
     public TestFlowBuilder ioTask(String taskName) {
         TestTask<Void> task = new TestTask<>(counter.incrementAndGet(),taskName);
         saveTask(taskName,task, Void.class);
-        builder.ioTask(task);
+        builder.ioDataTask(task);
 
         return this;
     }
@@ -91,7 +99,7 @@ public class TestFlowBuilder{
 
         saveTask(taskName,task, Void.class);
 
-        builder.cpuTask(task);
+        builder.cpuDataTask(task);
 
         return this;
     }
@@ -99,7 +107,7 @@ public class TestFlowBuilder{
     private <I> void createAndSaveTask(String taskName, AbstractFlowBuilder<?> builder, Class<I> clazz, Supplier<I> dataSupplier) {
         var task = new TestTask<I>(counter.incrementAndGet(),taskName);
 
-        builder.ioTask(task,dataSupplier);
+        builder.ioDataTask(task,dataSupplier);
 
         saveTask(taskName, task, clazz);
     }

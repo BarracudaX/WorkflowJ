@@ -25,7 +25,7 @@ public class FlowEventsTest {
     @Test
     void shouldPublishFlowStartedEventWhenStartingTheFlow() {
         TestFlow testFlow = testFlow()
-                .ioTask("test")
+                .actionTask("test")
                 .build();
 
         assertThat(testFlow).flowEventsSatisfy(TestFlowAssert.ExecutionEventsAssert::andHasNoMoreEvents);
@@ -38,7 +38,7 @@ public class FlowEventsTest {
     @Test
     void shouldPublishFlowCompletedEventWhenFlowFinishesNormally() {
         TestFlow testFlow = testFlow()
-                .ioTask("test")
+                .actionTask("test")
                 .build()
                 .startFlow();
 
@@ -55,7 +55,7 @@ public class FlowEventsTest {
         var exception = new RuntimeException("FAILED");
 
         TestFlow testFlow = testFlow()
-                .ioTask("test")
+                .actionTask("test")
                 .build()
                 .startFlow();
 
@@ -73,13 +73,13 @@ public class FlowEventsTest {
     @Test
     void shouldPublishFlowPausedEventWhenInterrupted() {
         TestFlow testFlow = testFlow()
-                .ioTask("task1")
+                .actionTask("task1")
                 .parallel(parallel -> parallel
-                        .subflow("Subflow1", subflow -> subflow.ioTask("parallelTask1"))
-                        .subflow("Subflow2", subflow -> subflow.ioTask("parallelTask2"))
-                        .subflow("Subflow3", subflow -> subflow.ioTask("parallelTask3"))
+                        .subflow("Subflow1", subflow -> subflow.actionTask("parallelTask1"))
+                        .subflow("Subflow2", subflow -> subflow.actionTask("parallelTask2"))
+                        .subflow("Subflow3", subflow -> subflow.actionTask("parallelTask3"))
                 )
-                .ioTask("task2")
+                .actionTask("task2")
                 .build()
                 .startFlow()
                 .waitUntilTaskRunning("task1")
@@ -98,9 +98,9 @@ public class FlowEventsTest {
     void shouldPublishSubflowStartedEvent() {
         TestFlow testFlow = testFlow()
                 .parallel(parallel -> parallel
-                        .subflow("Subflow1", subflow -> subflow.ioTask("parallelTask1"))
-                        .subflow("Subflow2", subflow -> subflow.ioTask("parallelTask2"))
-                        .subflow("Subflow3", subflow -> subflow.ioTask("parallelTask3"))
+                        .subflow("Subflow1", subflow -> subflow.actionTask("parallelTask1"))
+                        .subflow("Subflow2", subflow -> subflow.actionTask("parallelTask2"))
+                        .subflow("Subflow3", subflow -> subflow.actionTask("parallelTask3"))
                 )
                 .build()
                 .startFlow();
@@ -114,9 +114,9 @@ public class FlowEventsTest {
     void shouldPublishSubflowCompletedEventForSubflowThatCompleted() {
         TestFlow testFlow = testFlow()
                 .parallel(parallel -> parallel
-                        .subflow("Subflow1", subflow -> subflow.ioTask("parallelTask1"))
-                        .subflow("Subflow2", subflow -> subflow.ioTask("parallelTask2"))
-                        .subflow("Subflow3", subflow -> subflow.ioTask("parallelTask3"))
+                        .subflow("Subflow1", subflow -> subflow.actionTask("parallelTask1"))
+                        .subflow("Subflow2", subflow -> subflow.actionTask("parallelTask2"))
+                        .subflow("Subflow3", subflow -> subflow.actionTask("parallelTask3"))
                 )
                 .build()
                 .startFlow()
@@ -135,7 +135,7 @@ public class FlowEventsTest {
     void shouldPublishSubflowFailedEvent() {
         RuntimeException exception = new RuntimeException("FAILED");
         TestFlow testFlow = testFlow()
-                .parallel(parallel -> parallel.subflow("Subflow1", subflow -> subflow.ioTask("parallelTask1")))
+                .parallel(parallel -> parallel.subflow("Subflow1", subflow -> subflow.actionTask("parallelTask1")))
                 .build()
                 .startFlow()
                 .failTask("parallelTask1", exception);
@@ -152,9 +152,9 @@ public class FlowEventsTest {
     void shouldPublishSubflowInterruptedEventWhenFlowInterrupted() {
         TestFlow testFlow = testFlow()
                 .parallel(parallel -> parallel
-                        .subflow("Subflow1", subflow -> subflow.ioTask("parallelTask1"))
-                        .subflow("Subflow2", subflow -> subflow.ioTask("parallelTask2"))
-                        .subflow("Subflow3", subflow -> subflow.ioTask("parallelTask3"))
+                        .subflow("Subflow1", subflow -> subflow.actionTask("parallelTask1"))
+                        .subflow("Subflow2", subflow -> subflow.actionTask("parallelTask2"))
+                        .subflow("Subflow3", subflow -> subflow.actionTask("parallelTask3"))
                 )
                 .build()
                 .startFlow()
@@ -174,9 +174,9 @@ public class FlowEventsTest {
         RuntimeException exception = new RuntimeException("FAILED");
         TestFlow testFlow = testFlow()
                 .parallel(parallel -> parallel
-                        .subflow("Subflow1", subflow -> subflow.ioTask("parallelTask1"))
-                        .subflow("Subflow2", subflow -> subflow.ioTask("parallelTask2"))
-                        .subflow("Subflow3", subflow -> subflow.ioTask("parallelTask3"))
+                        .subflow("Subflow1", subflow -> subflow.actionTask("parallelTask1"))
+                        .subflow("Subflow2", subflow -> subflow.actionTask("parallelTask2"))
+                        .subflow("Subflow3", subflow -> subflow.actionTask("parallelTask3"))
                 )
                 .build()
                 .startFlow()
@@ -200,14 +200,14 @@ public class FlowEventsTest {
                 .parallel(parallelL1 -> {
                     parallelL1.subflow("Subflow1", subflow1 -> {
                         subflow1
-                                .ioTask("task1")
+                                .actionTask("task1")
                                 .parallel(parallelL2 -> {
                                     parallelL2.subflow("Subflow2", subflow2 -> {
                                         subflow2
-                                                .ioTask("task2").
+                                                .actionTask("task2").
                                                 parallel(parallelL3 -> {
                                                     parallelL3.subflow("Subflow3", subflow3 -> {
-                                                        subflow3.ioTask("task3");
+                                                        subflow3.actionTask("task3");
                                             });
                                         });
                                     });
