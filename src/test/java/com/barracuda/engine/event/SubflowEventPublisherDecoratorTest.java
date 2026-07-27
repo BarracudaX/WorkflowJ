@@ -1,17 +1,8 @@
 package com.barracuda.engine.event;
 
-import com.barracuda.engine.event.ExecutionEvent.FlowEvent.FlowCompletedEvent;
-import com.barracuda.engine.event.ExecutionEvent.FlowEvent.FlowFailedEvent;
-import com.barracuda.engine.event.ExecutionEvent.FlowEvent.FlowPausedEvent;
-import com.barracuda.engine.event.ExecutionEvent.FlowEvent.FlowStartedEvent;
-import com.barracuda.engine.event.ExecutionEvent.SubflowEvent.SubflowCompletedEvent;
-import com.barracuda.engine.event.ExecutionEvent.SubflowEvent.SubflowFailedEvent;
-import com.barracuda.engine.event.ExecutionEvent.SubflowEvent.SubflowPausedEvent;
-import com.barracuda.engine.event.ExecutionEvent.SubflowEvent.SubflowStartedEvent;
-import com.barracuda.engine.event.ExecutionEvent.TaskEvent.TaskCompletedEvent;
-import com.barracuda.engine.event.ExecutionEvent.TaskEvent.TaskFailedEvent;
-import com.barracuda.engine.event.ExecutionEvent.TaskEvent.TaskPausedEvent;
-import com.barracuda.engine.event.ExecutionEvent.TaskEvent.TaskStartEvent;
+import com.barracuda.engine.event.ExecutionEvent.FlowEvent.*;
+import com.barracuda.engine.event.ExecutionEvent.SubflowEvent.*;
+import com.barracuda.engine.event.ExecutionEvent.TaskEvent.*;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -41,6 +32,20 @@ public class SubflowEventPublisherDecoratorTest {
         decorator.publish(new FlowCompletedEvent(subflowID));
 
         verify(eventPublisherMock).publish(new SubflowCompletedEvent(rootFlowID,subflowID));
+    }
+
+    @Test
+    void shouldTranslateFlowReadyEventToSubflowReadyEvent() {
+        decorator.publish(new FlowReadyEvent(subflowID));
+
+        verify(eventPublisherMock).publish(new SubflowReadyEvent(rootFlowID,subflowID));
+    }
+
+    @Test
+    void shouldTranslateFlowResetEventToSubflowResetEvent() {
+        decorator.publish(new FlowResetEvent(subflowID));
+
+        verify(eventPublisherMock).publish(new SubflowResetEvent(rootFlowID,subflowID));
     }
 
     @Test
@@ -96,6 +101,24 @@ public class SubflowEventPublisherDecoratorTest {
         verify(eventPublisherMock).publish(unrelatedFlowPausedEvent);
     }
 
+    @Test
+    void shouldNotTranslateFlowReadyEventToSubflowReadyEventWhenTheEventIsNotAssociatedWithTheSubflow() {
+        var unrelatedFlowReadyEvent = new FlowReadyEvent(777);
+
+        decorator.publish(unrelatedFlowReadyEvent);
+
+        verify(eventPublisherMock).publish(unrelatedFlowReadyEvent);
+    }
+
+    @Test
+    void shouldNotTranslateFlowResetEventToSubflowResetEventWhenTheEventIsNotAssociatedWithTheSubflow() {
+        var unrelatedFlowResetEvent = new FlowResetEvent(777);
+
+        decorator.publish(unrelatedFlowResetEvent);
+
+        verify(eventPublisherMock).publish(unrelatedFlowResetEvent);
+    }
+
     @MethodSource("otherEvents")
     @ParameterizedTest
     void shouldNotTranslateOtherEvents(ExecutionEvent otherEvent) {
@@ -106,9 +129,10 @@ public class SubflowEventPublisherDecoratorTest {
 
     private static List<ExecutionEvent> otherEvents(){
         return List.of(
-                new TaskStartEvent(subflowID, 110000), new TaskCompletedEvent(subflowID, 10000),
+                new TaskStartEvent(subflowID, 110000), new TaskCompletedEvent(subflowID, 10000), new TaskResetEvent(subflowID, 110000),
                 new TaskFailedEvent(subflowID, 10000, null), new TaskPausedEvent(subflowID, 10000), new SubflowStartedEvent(rootFlowID, subflowID),
-                new SubflowCompletedEvent(rootFlowID,subflowID), new SubflowFailedEvent(rootFlowID,null,subflowID), new SubflowPausedEvent(rootFlowID,subflowID)
+                new SubflowCompletedEvent(rootFlowID,subflowID), new SubflowFailedEvent(rootFlowID,null,subflowID), new SubflowPausedEvent(rootFlowID,subflowID),
+                new SubflowReadyEvent(rootFlowID,subflowID), new SubflowResetEvent(rootFlowID,subflowID)
         );
     }
 }

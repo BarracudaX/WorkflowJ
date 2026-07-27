@@ -1,18 +1,9 @@
 package com.barracuda.engine.flow;
 
 import com.barracuda.engine.event.ExecutionEvent;
-import com.barracuda.engine.event.ExecutionEvent.FlowEvent.FlowCompletedEvent;
-import com.barracuda.engine.event.ExecutionEvent.FlowEvent.FlowFailedEvent;
-import com.barracuda.engine.event.ExecutionEvent.FlowEvent.FlowPausedEvent;
-import com.barracuda.engine.event.ExecutionEvent.FlowEvent.FlowStartedEvent;
-import com.barracuda.engine.event.ExecutionEvent.SubflowEvent.SubflowCompletedEvent;
-import com.barracuda.engine.event.ExecutionEvent.SubflowEvent.SubflowFailedEvent;
-import com.barracuda.engine.event.ExecutionEvent.SubflowEvent.SubflowPausedEvent;
-import com.barracuda.engine.event.ExecutionEvent.SubflowEvent.SubflowStartedEvent;
-import com.barracuda.engine.event.ExecutionEvent.TaskEvent.TaskCompletedEvent;
-import com.barracuda.engine.event.ExecutionEvent.TaskEvent.TaskFailedEvent;
-import com.barracuda.engine.event.ExecutionEvent.TaskEvent.TaskPausedEvent;
-import com.barracuda.engine.event.ExecutionEvent.TaskEvent.TaskStartEvent;
+import com.barracuda.engine.event.ExecutionEvent.FlowEvent.*;
+import com.barracuda.engine.event.ExecutionEvent.SubflowEvent.*;
+import com.barracuda.engine.event.ExecutionEvent.TaskEvent.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -97,6 +88,33 @@ public class SubflowDecoratorTest {
         verify(subflowMock).event(unrelatedSubflowFailedEvent);
     }
 
+    @Test
+    void shouldTranslateSubflowReadyEventToFlowReadyEvent() {
+        var subflowReadyEvent = new SubflowReadyEvent(rootID, subflowID);
+
+        flowDecorator.event(subflowReadyEvent);
+
+        verify(subflowMock).event(new FlowReadyEvent(subflowID));
+    }
+
+    @Test
+    void shouldNotTranslateSubflowReadyEventToFlowReadyEventWhenTheEventIsNotAssociatedWithTheSubflow() {
+        var unrelatedSubflowReadyEvent = new SubflowReadyEvent(rootID, 555);
+
+        flowDecorator.event(unrelatedSubflowReadyEvent);
+
+        verify(subflowMock).event(unrelatedSubflowReadyEvent);
+    }
+
+    @Test
+    void shouldTranslateSubflowResetEventToFlowResetEvent() {
+        var subflowResetEvent = new SubflowResetEvent(rootID, subflowID);
+
+        flowDecorator.event(subflowResetEvent);
+
+        verify(subflowMock).event(new FlowResetEvent(subflowID));
+    }
+
     @MethodSource("nonTranslatableEvents")
     @ParameterizedTest
     void shouldNotTranslateOtherEvents(ExecutionEvent otherEvent) {
@@ -105,10 +123,14 @@ public class SubflowDecoratorTest {
         verify(subflowMock).event(otherEvent);
     }
 
+    /**
+     * Is it okay to allow SubflowDecorator propagate flow events that weren't properly translate to subflow events?
+     */
     private static List<ExecutionEvent> nonTranslatableEvents(){
         return List.of(
-                new FlowStartedEvent(subflowID),new FlowCompletedEvent(subflowID),new FlowFailedEvent(subflowID,null),new FlowPausedEvent(subflowID),
-                new TaskStartEvent(subflowID,110000),new TaskCompletedEvent(subflowID,10000), new TaskFailedEvent(subflowID,10000,null), new TaskPausedEvent(subflowID,10000)
+                new FlowStartedEvent(subflowID),new FlowCompletedEvent(subflowID),new FlowFailedEvent(subflowID,null),new FlowPausedEvent(subflowID), new FlowResetEvent(subflowID),new FlowReadyEvent(subflowID),
+                new TaskStartEvent(subflowID,110000),new TaskCompletedEvent(subflowID,10000), new TaskFailedEvent(subflowID,10000,null),
+                new TaskPausedEvent(subflowID,10000), new TaskResetEvent(subflowID,10000)
         );
     }
 }

@@ -2,14 +2,9 @@ package com.barracuda.engine.flow;
 
 import com.barracuda.engine.event.Command;
 import com.barracuda.engine.event.ExecutionEvent;
-import com.barracuda.engine.event.ExecutionEvent.FlowEvent.FlowCompletedEvent;
-import com.barracuda.engine.event.ExecutionEvent.FlowEvent.FlowFailedEvent;
-import com.barracuda.engine.event.ExecutionEvent.FlowEvent.FlowPausedEvent;
-import com.barracuda.engine.event.ExecutionEvent.FlowEvent.FlowStartedEvent;
-import com.barracuda.engine.event.ExecutionEvent.SubflowEvent.SubflowCompletedEvent;
-import com.barracuda.engine.event.ExecutionEvent.SubflowEvent.SubflowFailedEvent;
-import com.barracuda.engine.event.ExecutionEvent.SubflowEvent.SubflowPausedEvent;
-import com.barracuda.engine.event.ExecutionEvent.SubflowEvent.SubflowStartedEvent;
+import com.barracuda.engine.event.ExecutionEvent.FlowEvent.*;
+import com.barracuda.engine.event.ExecutionEvent.SubflowEvent;
+import com.barracuda.engine.event.ExecutionEvent.SubflowEvent.*;
 
 public class SubflowDecorator implements Flow {
 
@@ -27,12 +22,18 @@ public class SubflowDecorator implements Flow {
 
     @Override
     public void event(ExecutionEvent event) {
-        switch (event){
-            case SubflowStartedEvent(_, long subflowID) when subflowID == subflow.id() -> subflow.event(new FlowStartedEvent(subflowID));
-            case SubflowCompletedEvent(_, long subflowID) when subflowID == subflow.id() -> subflow.event(new FlowCompletedEvent(subflowID));
-            case SubflowPausedEvent(_,long subflowID) when subflowID == subflow.id() -> subflow.event(new FlowPausedEvent(subflowID));
-            case SubflowFailedEvent(_, RuntimeException exception, long subflowID) when subflowID == subflow.id() -> subflow.event(new FlowFailedEvent(subflowID, exception));
-            default -> subflow.event(event);
+        if(!(event instanceof SubflowEvent subflowEvent) || subflowEvent.subflowID() != subflow.id()) {
+            subflow.event(event);
+            return;
+        }
+
+        switch (subflowEvent) {
+            case SubflowStartedEvent(_, long subflowID) -> subflow.event(new FlowStartedEvent(subflowID));
+            case SubflowCompletedEvent(_, long subflowID) -> subflow.event(new FlowCompletedEvent(subflowID));
+            case SubflowPausedEvent(_,long subflowID) -> subflow.event(new FlowPausedEvent(subflowID));
+            case SubflowFailedEvent(_, RuntimeException exception, long subflowID) -> subflow.event(new FlowFailedEvent(subflowID, exception));
+            case SubflowReadyEvent(_, long subflowID) -> subflow.event(new FlowReadyEvent(subflowID));
+            case SubflowResetEvent(_, long subflowID) -> subflow.event(new FlowResetEvent(subflowID));
         }
     }
 

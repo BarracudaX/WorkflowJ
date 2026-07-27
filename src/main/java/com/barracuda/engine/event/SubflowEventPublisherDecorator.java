@@ -1,13 +1,8 @@
 package com.barracuda.engine.event;
 
-import com.barracuda.engine.event.ExecutionEvent.FlowEvent.FlowCompletedEvent;
-import com.barracuda.engine.event.ExecutionEvent.FlowEvent.FlowFailedEvent;
-import com.barracuda.engine.event.ExecutionEvent.FlowEvent.FlowPausedEvent;
-import com.barracuda.engine.event.ExecutionEvent.FlowEvent.FlowStartedEvent;
-import com.barracuda.engine.event.ExecutionEvent.SubflowEvent.SubflowCompletedEvent;
-import com.barracuda.engine.event.ExecutionEvent.SubflowEvent.SubflowFailedEvent;
-import com.barracuda.engine.event.ExecutionEvent.SubflowEvent.SubflowPausedEvent;
-import com.barracuda.engine.event.ExecutionEvent.SubflowEvent.SubflowStartedEvent;
+import com.barracuda.engine.event.ExecutionEvent.FlowEvent;
+import com.barracuda.engine.event.ExecutionEvent.FlowEvent.*;
+import com.barracuda.engine.event.ExecutionEvent.SubflowEvent.*;
 
 public class SubflowEventPublisherDecorator implements FlowEventPublisher {
 
@@ -23,12 +18,18 @@ public class SubflowEventPublisherDecorator implements FlowEventPublisher {
 
     @Override
     public void publish(ExecutionEvent event) {
-        switch (event){
-            case FlowStartedEvent(long flowID) when flowID == subflowID -> flowEventPublisher.publish(new SubflowStartedEvent(rootID, subflowID));
-            case FlowCompletedEvent(long flowID) when flowID == subflowID -> flowEventPublisher.publish(new SubflowCompletedEvent(rootID,subflowID));
-            case FlowFailedEvent(long flowID, RuntimeException exception) when flowID == subflowID -> flowEventPublisher.publish(new SubflowFailedEvent(rootID, exception, subflowID));
-            case FlowPausedEvent(long flowID) when flowID == subflowID -> flowEventPublisher.publish(new SubflowPausedEvent(rootID,subflowID));
-            default -> flowEventPublisher.publish(event);
+        if(!(event instanceof FlowEvent flowEvent) || flowEvent.flowID() != subflowID){
+            flowEventPublisher.publish(event);
+            return;
+        }
+
+        switch (flowEvent){
+            case FlowStartedEvent _ -> flowEventPublisher.publish(new SubflowStartedEvent(rootID, subflowID));
+            case FlowCompletedEvent _ -> flowEventPublisher.publish(new SubflowCompletedEvent(rootID,subflowID));
+            case FlowFailedEvent(_, RuntimeException exception) -> flowEventPublisher.publish(new SubflowFailedEvent(rootID, exception, subflowID));
+            case FlowPausedEvent _ -> flowEventPublisher.publish(new SubflowPausedEvent(rootID,subflowID));
+            case FlowReadyEvent flowReadyEvent -> flowEventPublisher.publish(new SubflowReadyEvent(rootID,subflowID));
+            case FlowResetEvent flowResetEvent -> flowEventPublisher.publish(new SubflowResetEvent(rootID,subflowID));
         }
     }
 
