@@ -4,12 +4,11 @@ import com.barracuda.engine.event.ExecutionEvent.FlowEvent.FlowPausedEvent;
 import com.barracuda.engine.event.ExecutionEvent.FlowEvent.FlowResetEvent;
 import com.barracuda.engine.event.ExecutionEvent.FlowEvent.FlowStartedEvent;
 import com.barracuda.engine.test.flow.TestFlow;
-import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 import static com.barracuda.engine.test.assertJ.CustomAssertions.assertThat;
 import static com.barracuda.engine.test.builder.TestFlowBuilder.testFlow;
-import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
 
 public class FlowResetTest {
 
@@ -20,7 +19,7 @@ public class FlowResetTest {
                 .build()
                 .startFlow();
 
-        Assertions.assertThatIllegalStateException().isThrownBy(testFlow::reset);
+        assertThatIllegalStateException().isThrownBy(testFlow::reset);
     }
 
     @Test
@@ -29,10 +28,12 @@ public class FlowResetTest {
                 .ioTask("task")
                 .build()
                 .startFlow()
-                .finishTask("task")
-                .waitUntilFlowCompleted();
+                .finishTask("task");
 
-        assertThatCode(testFlow::reset).doesNotThrowAnyException();
+        assertThat(testFlow).isEventuallyCompleted();
+
+        testFlow.reset();
+
         assertThat(testFlow).isReady();
     }
 
@@ -42,8 +43,11 @@ public class FlowResetTest {
                 .ioTask("task")
                 .build()
                 .startFlow()
-                .waitUntilTaskRunningAndFailItAndWaitUntilFailed("task", new RuntimeException("FAILED"))
-                .reset();
+                .failTask("task", new RuntimeException("FAILED"));
+
+        assertThat(testFlow).hasEventuallyFailed();
+
+        testFlow.reset();
 
         assertThat(testFlow).isReady();
     }
@@ -54,22 +58,28 @@ public class FlowResetTest {
                 .ioTask("task")
                 .build()
                 .startFlow()
-                .interruptFlow()
-                .reset();
+                .interruptFlow();
+
+        assertThat(testFlow).isEventuallyPaused();
+
+        testFlow.reset();
 
         assertThat(testFlow).isReady();
     }
 
     @Test
-    void shouldSendFlowStartedEventAgainAfterResetting() {
+    void shouldSendFlowStartedEventWhenStartingFlowAgainAfterResetting() {
         TestFlow testFlow = testFlow()
                 .ioTask("task")
                 .build()
+                .startFlow()
+                .interruptFlow();
+
+        assertThat(testFlow).isEventuallyPaused().flowEventsSatisfy(events -> events.nextEventIs(FlowStartedEvent.class).nextEventIs(FlowPausedEvent.class).andHasNoMoreEvents());
+
+        testFlow
+                .reset()
                 .startFlow();
-
-        assertThat(testFlow).flowEventsSatisfy(events -> events.nextEventIs(FlowStartedEvent.class).andHasNoMoreEvents());
-
-        testFlow.interruptFlow().reset().startFlow(); // restart the flow
 
         assertThat(testFlow).flowEventsSatisfy(events -> events.nextEventIs(FlowStartedEvent.class).nextEventIs(FlowPausedEvent.class).nextEventIs(FlowResetEvent.class).nextEventIs(FlowStartedEvent.class).andHasNoMoreEvents());
     }
@@ -77,14 +87,13 @@ public class FlowResetTest {
     @Test
     void shouldResetSubflows() {
         TestFlow testFlow = testFlow()
-                .parallel(parallel ->
-                        parallel
+                .parallel(parallel -> parallel
                                 .subflow("Subflow1", subflow -> subflow.ioTask("task1"))
                                 .subflow("Subflow2", subflow -> subflow.ioTask("task2"))
-                )
-                .build();
+                ).build();
 
-        testFlow.startFlow().waitUntilTaskRunningAndFailItAndWaitUntilFailed("task2", new RuntimeException("FAILED"));
+        testFlow.startFlow().failTask("task2", new RuntimeException("FAILED"));
+
         assertThat(testFlow).hasEventuallyFailed();
         assertThat(testFlow.subflow("Subflow1")).isEventuallyPaused();
         assertThat(testFlow.subflow("Subflow2")).hasEventuallyFailed();
@@ -94,9 +103,9 @@ public class FlowResetTest {
         assertThat(testFlow).isReady();
         assertThat(testFlow.subflow("Subflow1")).isReady();
         assertThat(testFlow.subflow("Subflow2")).isReady();
-
     }
 
+    //test that the reset signals goes to the second level of subflow(subflow within subflow)
     @Test
     void shouldResetSubflowsLevel2(){
         TestFlow testFlow = testFlow()
@@ -107,10 +116,11 @@ public class FlowResetTest {
                 )
                 .build();
 
-        testFlow.startFlow().waitUntilTaskRunningAndFailItAndWaitUntilFailed("task2", new RuntimeException("FAILED"));
+        testFlow.startFlow().failTask("task2", new RuntimeException("FAILED"));
         assertThat(testFlow).hasEventuallyFailed();
+
         assertThat(testFlow.subflow("Subflow1")).isEventuallyPaused();
-        assertThat(testFlow.subflow("Subflow2")).hasEventuallyFailed();
+        assertThat(testFlow.subflow("Subflow2")).hasEventuallyFailed();// failed because its child node(another subflow) has failed.
         assertThat(testFlow.subflow("Subflow3")).hasEventuallyFailed();
 
         testFlow.reset();

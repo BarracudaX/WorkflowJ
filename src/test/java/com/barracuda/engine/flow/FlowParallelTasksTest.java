@@ -20,7 +20,7 @@ import static com.barracuda.engine.test.builder.TestFlowBuilder.testFlow;
 public class FlowParallelTasksTest extends AbstractFlowTest{
 
     @Test
-    void shouldAllowExecutingTasksInParallelWithSubWorkflows() {
+    void shouldAllowExecutingTasksInParallelWithSubflows() {
         var readinessLatch = new CountDownLatch(3);
         var barrierLatch = new CountDownLatch(1);
 
@@ -34,9 +34,9 @@ public class FlowParallelTasksTest extends AbstractFlowTest{
 
         ioTaskExecutor.submit(() -> flow.command(new Continue()));
 
-        Awaitility.await().atMost(Duration.ofSeconds(1)).untilAsserted(readinessLatch::await);
+        Awaitility.await().atMost(Duration.ofSeconds(1)).untilAsserted(readinessLatch::await); // wait for all 3 tasks to start
 
-        barrierLatch.countDown();
+        barrierLatch.countDown(); // let the tasks finish
 
         AwaitilityUtils.waitUntilFlowCompleted(flow, Duration.ofSeconds(1));
     }
@@ -52,8 +52,6 @@ public class FlowParallelTasksTest extends AbstractFlowTest{
                 )
                 .build()
                 .startFlow()
-                .waitUntilTaskRunning("ParallelTask2")
-                .waitUntilTaskRunning("ParallelTask3")
                 .failTask("ParallelFailTask", exception);
 
         assertThat(testFlow).hasEventuallyFailedWith(exception);
@@ -69,9 +67,6 @@ public class FlowParallelTasksTest extends AbstractFlowTest{
                 )
                 .build()
                 .startFlow()
-                .waitUntilTaskRunning("parallelTask1")
-                .waitUntilTaskRunning("parallelTask2")
-                .waitUntilTaskRunning("parallelTask3")
                 .failTask("parallelTask1", new RuntimeException("FAILED"));
 
         assertThat(testFlow).hasTaskSatisfying("parallelTask2", TestTaskAssert::isEventuallyCancelled);

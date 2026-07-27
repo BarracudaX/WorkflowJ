@@ -25,8 +25,4 @@ public class FlowCancellationTest {
         assertThat(testFlow).hasTaskSatisfying("FirstTask", TestTaskAssert::isEventuallyCancelled);
     }
 
-    @Disabled("Need to be replaced with a better test that tests that the second task is not started until first is completed. If such test already exists, this need to be deleted.")
-    @Test
-    void shouldNotExecuteNextTaskWhenInterruptedAndFirstTaskHasNotCompleted() {
-    }
 }

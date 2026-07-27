@@ -111,14 +111,6 @@ public class TestFlow {
         return this;
     }
 
-    public TestFlow waitUntilTaskRunningAndFailItAndWaitUntilFailed(String taskName, RuntimeException exception) {
-        waitUntilTaskRunning(taskName);
-        failTask(taskName, exception);
-        waitUntilTaskFailed(taskName);
-
-        return runCatching(() -> AwaitilityUtils.waitUntilFlowFailed(flow,Duration.ofSeconds(1)));
-    }
-
     public TestFlow failTask(String taskName, RuntimeException exception) {
         TestTask<Void> task = getTestTaskByName(taskName);
         task.failNow(exception);
@@ -179,11 +171,6 @@ public class TestFlow {
         }
 
         return output.toString();
-    }
-
-    public TestFlow waitUntilTaskFailed(String taskName) {
-        runCatching(() -> AwaitilityUtils.waitUntilTestTaskFailed(getTestTaskByName(taskName),Duration.ofSeconds(1)));
-        return this;
     }
 
     public TestFlow waitUntilTaskRunning(String taskName) {
