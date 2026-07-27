@@ -26,11 +26,11 @@ public class TestFlow {
     @Getter
     private final Flow flow;
     private final Map<String,TestFlow> subflows;
-    private final Map<Class<?>, Map<String, TestTask<?>>> tasks;
+    private final Map<String, TestTask> tasks;
     @Getter
     private Future<?> flowTask;
 
-    public TestFlow(InMemoryEventCapturer eventCapturer, Flow flow, Map<String, TestFlow> subflows, Map<Class<?>, Map<String, TestTask<?>>> tasks) {
+    public TestFlow(InMemoryEventCapturer eventCapturer, Flow flow, Map<String, TestFlow> subflows, Map<String, TestTask> tasks) {
         this.eventCapturer = eventCapturer;
         this.flow = flow;
         this.subflows = subflows;
@@ -56,7 +56,7 @@ public class TestFlow {
     }
 
     public List<TaskEvent> taskEvents(String taskName) {
-        return eventCapturer.taskEvents(getConsumerTaskByName(taskName, Void.class).id());
+        return eventCapturer.taskEvents(getTestTaskByName(taskName).id());
     }
 
     public long subflowID(String subflowName){
@@ -112,7 +112,7 @@ public class TestFlow {
     }
 
     public TestFlow failTask(String taskName, RuntimeException exception) {
-        TestTask<Void> task = getTestTaskByName(taskName);
+        TestTask task = getTestTaskByName(taskName);
         task.failNow(exception);
         runCatching(() -> AwaitilityUtils.waitUntilTestTaskFailed(task,Duration.ofSeconds(1)));
         runCatching(() -> AwaitilityUtils.waitUntilFlowFailed(flow,Duration.ofSeconds(1)));
@@ -120,7 +120,7 @@ public class TestFlow {
     }
 
     public TestFlow finishTask(String taskName) {
-        TestTask<Void> task = getTestTaskByName(taskName);
+        TestTask task = getTestTaskByName(taskName);
 
         task.finish();
 
@@ -182,9 +182,9 @@ public class TestFlow {
         return eventCapturer.flowEvents(flow.id());
     }
 
-    public TestTask<Void> getTestTaskByName(String taskName) {
+    public TestTask getTestTaskByName(String taskName) {
         try {
-            return Objects.requireNonNull(getConsumerTaskByName(taskName, Void.class));
+            return Objects.requireNonNull(tasks.get(taskName), "Task " + taskName +". Configured tasks: " + tasks.keySet());
         }catch (NullPointerException e) {
             for(var subflow : subflows.values()) {
                 try{
@@ -193,14 +193,6 @@ public class TestFlow {
             }
             throw e;
         }
-    }
-
-    public <I> TestTask<I> getConsumerTaskByName(String taskName,Class<I> clazz) {
-        Map<String,TestTask<?>> tasks = Objects.requireNonNull(this.tasks.get(clazz),"No task was found that accepts input of type " + clazz);
-
-        var task = Objects.requireNonNull(tasks.get(taskName), "Task " + taskName + " not found that accept input of type " + clazz + ". Configured tasks that accept input of type " + clazz + ": " + tasks.keySet());
-
-        return (TestTask<I>) task;
     }
 
     private TestFlow getSubflowByName(String subflowName) {

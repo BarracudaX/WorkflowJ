@@ -14,7 +14,7 @@ import java.util.concurrent.atomic.AtomicReference;
  * Note that before calling finish or fail, use waiUntilRunning to verify that the task runs; otherwise, an IllegalStateException will be thrown because the task isn't running.
  * This class is meant for testing purposes only. Note that this class isn't how tasks typically should be implemented; specifically, tasks shouldn't carry any state that is relevant to the execution of their logic.
  */
-public final class TestTask<I> implements ActionTask {
+public final class TestTask implements ActionTask {
 
     public enum TaskThread {
         VIRTUAL, PLATFORM, NONE
@@ -56,7 +56,7 @@ public final class TestTask<I> implements ActionTask {
         return id;
     }
 
-    public TestTask<I> failNow(RuntimeException failException) {
+    public TestTask failNow(RuntimeException failException) {
         if (!state.compareAndSet(TestTaskState.RUNNING, TestTaskState.COMPLETED)) {
             throw new IllegalStateException("Cannot make this task fail because its state is not RUNNING, but " + state.get());
         }
@@ -66,7 +66,7 @@ public final class TestTask<I> implements ActionTask {
         return this;
     }
 
-    public TestTask<I> finish() {
+    public TestTask finish() {
         if (!state.compareAndSet(TestTaskState.RUNNING, TestTaskState.COMPLETED)) {
             throw new IllegalStateException("Cannot finish this task because its state is not RUNNING, but " + state.get());
         }

@@ -77,7 +77,7 @@ public class TestFlowAssert extends AbstractAssert<TestFlowAssert, TestFlow> {
         return this;
     }
 
-    public class TestTaskAssert extends AbstractAssert<TestTaskAssert, TestTask<?>> {
+    public class TestTaskAssert extends AbstractAssert<TestTaskAssert, TestTask> {
 
         TestTaskAssert(TestTask testTask) {
             super(testTask, TestTaskAssert.class);

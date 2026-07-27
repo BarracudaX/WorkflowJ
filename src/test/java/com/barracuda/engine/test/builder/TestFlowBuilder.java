@@ -20,7 +20,7 @@ import java.util.function.Consumer;
 public class TestFlowBuilder{
 
     protected final InMemoryEventCapturer eventCapturer;
-    protected final Map<Class<?>, Map<String, TestTask<?>>> testTasks = new LinkedHashMap<>();
+    protected final Map<String, TestTask> testTasks = new LinkedHashMap<>();
     protected final Map<String, TestFlow> subflows = new LinkedHashMap<>();
     private final ExecutorService cpuExecutor;
     private final ExecutorService ioExecutor;
@@ -40,7 +40,6 @@ public class TestFlowBuilder{
         this.builder = builder;
         this.eventCapturer = eventCapturer;
         this.counter = counter;
-        testTasks.put(Void.class,new LinkedHashMap<>()); // create entry for Void input by default
     }
 
     /**
@@ -69,15 +68,15 @@ public class TestFlowBuilder{
     }
 
     public TestFlowBuilder actionTask(String taskName) {
-        TestTask<Void> task = new TestTask<>(counter.incrementAndGet(),taskName);
-        saveTask(taskName,task, Void.class);
+        TestTask task = new TestTask(counter.incrementAndGet(),taskName);
+        saveTask(taskName,task);
         builder.actionTask(task);
 
         return this;
     }
 
-    private <I> void saveTask(String taskName, TestTask<I> task, Class<I> clazz) {
-        if (testTasks.get(clazz).put(taskName, task) != null) {
+    private <I> void saveTask(String taskName, TestTask task) {
+        if (testTasks.put(taskName, task) != null) {
             throw new IllegalArgumentException("Duplicate task name: " + taskName);
         }
     }
