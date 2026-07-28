@@ -1,6 +1,6 @@
 package com.barracuda.engine.flow;
 
-import com.barracuda.engine.event.Command;
+import com.barracuda.engine.command.Command;
 import com.barracuda.engine.event.ExecutionEvent;
 import com.barracuda.engine.event.ExecutionEvent.FlowEvent.*;
 import com.barracuda.engine.event.ExecutionEvent.SubflowEvent;

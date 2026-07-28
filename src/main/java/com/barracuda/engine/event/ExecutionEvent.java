@@ -41,6 +41,8 @@ public sealed interface ExecutionEvent {
 
         long taskID();
 
+        long flowID();
+
         record TaskStartEvent(long flowID, long taskID) implements TaskEvent { }
 
         record TaskCompletedEvent(long flowID, long taskID) implements TaskEvent { }

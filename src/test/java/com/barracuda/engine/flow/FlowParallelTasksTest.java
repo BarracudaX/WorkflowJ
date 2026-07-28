@@ -1,6 +1,6 @@
 package com.barracuda.engine.flow;
 
-import com.barracuda.engine.event.Command.Continue;
+import com.barracuda.engine.command.Command.Continue;
 import com.barracuda.engine.test.assertJ.TestFlowAssert.TestTaskAssert;
 import com.barracuda.engine.test.flow.TestFlow;
 import com.barracuda.engine.test.task.ParallelTestTask;

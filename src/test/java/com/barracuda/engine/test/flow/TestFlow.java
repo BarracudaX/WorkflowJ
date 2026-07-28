@@ -1,8 +1,7 @@
 package com.barracuda.engine.test.flow;
 
-import com.barracuda.engine.event.Command.Continue;
-import com.barracuda.engine.event.Command.Prepare;
-import com.barracuda.engine.event.Command.Reset;
+import com.barracuda.engine.command.Command.Continue;
+import com.barracuda.engine.command.Command.Reset;
 import com.barracuda.engine.event.ExecutionEvent;
 import com.barracuda.engine.event.ExecutionEvent.FlowEvent;
 import com.barracuda.engine.event.ExecutionEvent.FlowEvent.FlowStartedEvent;
@@ -51,12 +50,20 @@ public class TestFlow {
         }
     }
 
+    public List<ExecutionEvent> allEvents(){
+        return eventCapturer.events();
+    }
+
     public List<SubflowEvent> subflowEvents(String subflowName) {
         return eventCapturer.subflowEvents(flow.id(), subflowID(subflowName));
     }
 
     public List<TaskEvent> taskEvents(String taskName) {
         return eventCapturer.taskEvents(getTestTaskByName(taskName).id());
+    }
+
+    public long taskID(String taskName) {
+        return getTestTaskByName(taskName).id();
     }
 
     public long subflowID(String subflowName){
@@ -67,11 +74,6 @@ public class TestFlow {
         return flow.id();
     }
 
-
-    public TestFlow prepare(){
-        flow.command(new Prepare());
-        return this;
-    }
 
     public TestFlow sendEvent(ExecutionEvent event) {
         flow.event(event);
@@ -184,14 +186,18 @@ public class TestFlow {
 
     public TestTask getTestTaskByName(String taskName) {
         try {
-            return Objects.requireNonNull(tasks.get(taskName), "Task " + taskName +". Configured tasks: " + tasks.keySet());
+            return Objects.requireNonNull(tasks.get(taskName), "Task " + taskName +" not found. Configured tasks: " + tasks.keySet());
         }catch (NullPointerException e) {
+            var exception = e;
             for(var subflow : subflows.values()) {
                 try{
                     return subflow.getTestTaskByName(taskName);
-                }catch (NullPointerException _){}
+                }catch (NullPointerException ex){
+                    ex.initCause(exception);
+                    exception = ex;
+                }
             }
-            throw e;
+            throw exception;
         }
     }
 

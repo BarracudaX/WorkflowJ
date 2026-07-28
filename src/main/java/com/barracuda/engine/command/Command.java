@@ -1,4 +1,4 @@
-package com.barracuda.engine.event;
+package com.barracuda.engine.command;
 
 public sealed interface Command {
 
@@ -6,7 +6,5 @@ public sealed interface Command {
     record Continue() implements Command {}
 
     record Reset() implements Command {}
-
-    record Prepare() implements Command { }
 
 }

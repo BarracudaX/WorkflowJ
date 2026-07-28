@@ -1,6 +1,7 @@
 package com.barracuda.engine.builder;
 
 import com.barracuda.engine.chain.ChainNode;
+import com.barracuda.engine.chain.EmptyNode;
 import com.barracuda.engine.flow.Flow;
 import com.barracuda.engine.flow.FlowContext;
 import com.barracuda.engine.flow.FlowImpl;
@@ -22,7 +23,7 @@ public class FlowBuilder extends AbstractFlowBuilder<FlowBuilder> {
     }
 
     public Flow build() {
-        ChainNode current = null;
+        ChainNode current = new EmptyNode();
 
         for (Function<ChainNode, ChainNode> node : chainNodes.reversed()) {
             current = node.apply(current);

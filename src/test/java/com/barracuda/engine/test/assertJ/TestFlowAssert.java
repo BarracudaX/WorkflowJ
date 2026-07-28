@@ -11,8 +11,10 @@ import com.barracuda.engine.test.task.TestTaskState;
 import com.barracuda.engine.utility.AwaitilityUtils;
 import org.assertj.core.api.AbstractAssert;
 import org.assertj.core.api.Assertions;
+import org.assertj.core.api.CollectionAssert;
 
 import java.time.Duration;
+import java.util.Collection;
 import java.util.NoSuchElementException;
 import java.util.SequencedCollection;
 import java.util.function.Consumer;
@@ -22,6 +24,11 @@ public class TestFlowAssert extends AbstractAssert<TestFlowAssert, TestFlow> {
 
     protected TestFlowAssert(TestFlow testFlow) {
         super(testFlow, TestFlowAssert.class);
+    }
+
+    public TestFlowAssert executionHistory(Consumer<ExecutionEventsAssert<ExecutionEvent>> historyConsumer){
+        historyConsumer.accept(new ExecutionEventsAssert<>(actual.allEvents()));
+        return this;
     }
 
     public TestFlowAssert isEventuallyCompleted() {
@@ -47,10 +54,6 @@ public class TestFlowAssert extends AbstractAssert<TestFlowAssert, TestFlow> {
 
     public TestFlowAssert isEventuallyPaused(){
         return run(() -> "Expected the flow to pause.", () -> AwaitilityUtils.waitUntilFlowPaused(actual.getFlow(),Duration.ofSeconds(1)));
-    }
-
-    public TestFlowAssert enteredReplayMode(){
-        return run(() -> "Expected the flow have entered replay mode.", () -> Assertions.assertThat(actual.getFlow().status()).isEqualTo(FlowStatus.REPLAY_MODE));
     }
 
     public TestFlowAssert isReady(){
@@ -83,13 +86,8 @@ public class TestFlowAssert extends AbstractAssert<TestFlowAssert, TestFlow> {
             super(testTask, TestTaskAssert.class);
         }
 
-        public TestTaskAssert ranOnVirtualThread(){
-            run(() -> "Expected the task " + actual.name() + " to have ran on virtual thread. Task: " + actual, () -> Assertions.assertThat(actual.lastTaskThread()).isEqualTo(TestTask.TaskThread.VIRTUAL));
-            return this;
-        }
-
-        public TestTaskAssert ranOnPlatformThread(){
-            run(() -> "Expected the task " + actual.name() + " to have ran on platform thread. Task: " + actual, () -> Assertions.assertThat(actual.lastTaskThread()).isEqualTo(TestTask.TaskThread.PLATFORM));
+        public TestTaskAssert hasEventuallyCompleted(){
+            run(() -> "Expected teh task "+actual.name()+ " to eventually complete. Task: "+actual, ()-> AwaitilityUtils.waitUntilTestTaskCompleted(actual,Duration.ofSeconds(1)));
             return this;
         }
 
@@ -110,57 +108,31 @@ public class TestFlowAssert extends AbstractAssert<TestFlowAssert, TestFlow> {
 
     }
 
-    public class ExecutionEventsAssert<E extends ExecutionEvent> extends AbstractAssert<ExecutionEventsAssert<E>, SequencedCollection<E>>{
+    public class ExecutionEventsAssert<E extends ExecutionEvent> extends CollectionAssert<E> {
 
-        protected ExecutionEventsAssert(SequencedCollection<E> flowEvents) {
-            super(flowEvents, ExecutionEventsAssert.class);
+        public ExecutionEventsAssert(Collection<? extends E> actual) {
+            super(actual);
         }
 
-//        public FlowEventsAssert nextEventIsFlowCompletedEvent(){
-//            nextEventIs(FlowCompletedEvent.class);
-//
-//            return this;
-//        }
-//
-//        public FlowEventsAssert nextEventIsFlowStartedEvent(){
-//            nextEventIs(FlowStartedEvent.class);
-//
-//            return this;
-//        }
-//
-//        public FlowEventsAssert nextEventIsFlowPausedEvent(){
-////            nextEventIs(FlowEvent.FlowPausedEvent.class);
-//
-//            return this;
-//        }
-//
-//        public FlowEventsAssert nextEventIsFlowFailedEvent(RuntimeException exception){
-////            var event = nextEventIs(FlowEvent.FlowFailedEvent.class);
-////
-////            try{
-////                Assertions.assertThat(event.exception()).isInstanceOf(exception.getClass()).hasMessage(exception.getMessage());
-////            }catch (AssertionError error){
-////                failWithThisMessage("Expected FlowFailedEvent's exception to be"+exception+" but was "+event.exception());
-////            }
-//
-//            return this;
-//        }
 
-        public <T extends ExecutionEvent> ExecutionEventsAssert<E> nextEventIs(Class<T> clazz){
-            return nextEventIs(clazz,(_) -> {});
+        public <T extends ExecutionEvent> ExecutionEventsAssert<E> nextEventIs(Class<T> clazz) {
+            return nextEventIs(clazz, (_) -> {
+            });
         }
 
-        public <T extends ExecutionEvent> ExecutionEventsAssert<E> nextEventIs(Class<T> clazz, Consumer<T> verifier){
+        public <T extends ExecutionEvent> ExecutionEventsAssert<E> nextEventIs(Class<T> clazz, Consumer<T> verifier) {
             T event = null;
+            var iterator = actual.iterator();
             try {
-                event = (T) actual.removeFirst();
+                event = (T) iterator.next();
+                iterator.remove();
                 clazz.cast(event);
             } catch (NoSuchElementException e) {
                 throwWithMessage("No more events left. All events of this assertions have been exhausted/verified.", e);
             } catch (ClassCastException ex) {
-                throwWithMessage("Expected next event to be " + clazz.getSimpleName() +", but was "+event, ex);
+                throwWithMessage("Expected next event to be " + clazz.getSimpleName() + ", but was " + event, ex);
             } catch (Throwable ex) {
-                throwWithMessage("Expected "+ clazz.getSimpleName() +" event.", ex);
+                throwWithMessage("Expected " + clazz.getSimpleName() + " event.", ex);
             }
 
             verifier.accept(event);
@@ -168,9 +140,9 @@ public class TestFlowAssert extends AbstractAssert<TestFlowAssert, TestFlow> {
             return this;
         }
 
-        public ExecutionEventsAssert<E> andHasNoMoreEvents(){
+        public ExecutionEventsAssert<E> andHasNoMoreEvents() {
             if (!actual.isEmpty()) {
-                failWithThisMessage("Expected not to have events left, but remaining events were:"+actual);
+                failWithThisMessage("Expected not to have events left, but remaining events were:" + actual);
             }
             return this;
         }

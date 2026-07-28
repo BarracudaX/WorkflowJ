@@ -1,10 +1,10 @@
 package com.barracuda.engine.flow;
 
 import com.barracuda.engine.chain.ChainNode;
-import com.barracuda.engine.event.Command;
-import com.barracuda.engine.event.Command.Continue;
-import com.barracuda.engine.event.Command.Prepare;
-import com.barracuda.engine.event.Command.Reset;
+import com.barracuda.engine.command.Command;
+import com.barracuda.engine.command.Command.Continue;
+import com.barracuda.engine.command.Command.Reset;
+import com.barracuda.engine.command.CommandRejectedException;
 import com.barracuda.engine.event.ExecutionEvent;
 import com.barracuda.engine.event.ExecutionEvent.FlowEvent;
 import com.barracuda.engine.event.ExecutionEvent.FlowEvent.*;
@@ -19,12 +19,11 @@ public class FlowImpl implements Flow {
     private volatile FlowStatus status = FlowStatus.READY_TO_CONTINUE;
     private final long flowID;
     private final FlowContext context;
-    private volatile boolean startedEventPublished = false;
     private final FlowEventPublisher flowEventPublisher;
 
     public FlowImpl(ChainNode nextNode, FlowContext context, long flowID) {
         this.context = Objects.requireNonNull(context);
-        this.nextNode = nextNode;
+        this.nextNode = Objects.requireNonNull(nextNode);
         this.flowID = flowID;
         this.flowEventPublisher = context.flowEventPublisher();
     }
@@ -33,61 +32,62 @@ public class FlowImpl implements Flow {
     public void command(Command command) {
         switch (command) {
             case Continue continueCommand -> handleContinueCommand(continueCommand);
-            case Prepare prepareCommand -> handlePrepareCommand(prepareCommand);
             case Reset resetCommand -> handleResetCommand(resetCommand);
         }
     }
 
     private void handleResetCommand(Reset reset) {
         if (status == FlowStatus.RUNNING) {
-            throw new IllegalStateException("Cannot reset flow that is currently running.");
+            throw new CommandRejectedException("Cannot reset flow that is currently running.");
         }
 
         propagateCommand(reset);
 
+        flowReset();
+    }
+
+    private void flowReset() {
         var flowResetEvent = new FlowResetEvent(flowID);
+
         flowEventPublisher.publish(flowResetEvent);
+
         event(flowResetEvent);
 
     }
 
-    private void handlePrepareCommand(Prepare prepare) {
-        if (status != FlowStatus.REPLAY_MODE) {
-            throw new IllegalStateException("Cannot prepare flow because of its current status " + status);
-        }
-
-        propagateCommand(prepare);
-
-        FlowReadyEvent flowReadyEvent = new FlowReadyEvent(flowID);
-        flowEventPublisher.publish(flowReadyEvent);
-
-        event(flowReadyEvent);
-    }
-
     private void handleContinueCommand(Continue continueCommand) {
-        if (status != FlowStatus.READY_TO_CONTINUE) {
-            throw new IllegalStateException("Cannot continue a flow that's in " + status + " state.");
+        if(status == FlowStatus.COMPLETED) {
+            propagateCommand(continueCommand);
+            return;
         }
 
-        if (!startedEventPublished) {
-            var flowStartedEvent = new FlowStartedEvent(flowID);
-            flowEventPublisher.publish(flowStartedEvent);
-            event(flowStartedEvent);
+        if (status != FlowStatus.READY_TO_CONTINUE) {
+            throw new  CommandRejectedException("Cannot continue flow because of its current state being "+status);
         }
+
+        flowStarted();
 
         propagateCommand(continueCommand);
 
+        flowCompleted();
+    }
+
+    private void flowCompleted() {
         FlowCompletedEvent flowCompletedEvent = new FlowCompletedEvent(flowID);
         flowEventPublisher.publish(flowCompletedEvent);
 
         event(flowCompletedEvent);
     }
 
-    private void propagateCommand(Command command) {
-        if(nextNode == null){
-            return;
-        }
+    private void flowStarted() {
+        var flowStartedEvent = new FlowStartedEvent(flowID);
 
+        flowEventPublisher.publish(flowStartedEvent);
+
+        event(flowStartedEvent);
+    }
+
+    private void propagateCommand(Command command) {
         ScopedValue.where(FLOW_CONTEXT, context).run(() -> {
 
             try (var scope = StructuredTaskScope.open()) {
@@ -112,21 +112,21 @@ public class FlowImpl implements Flow {
 
     private void flowEvent(FlowEvent flowEvent) {
         switch (flowEvent) {
-            case FlowStartedEvent ev -> flowStartedEvent(ev);
-            case FlowCompletedEvent ev -> flowCompletedEvent(ev); // already completed.
+            case FlowStartedEvent _ -> flowStartedEvent();
+            case FlowCompletedEvent _ -> flowCompletedEvent(); // already completed.
             case FlowFailedEvent ev -> flowFailedEvent(ev);
-            case FlowResetEvent ev -> flowResetEvent(ev);
-            case FlowReadyEvent ev -> flowReadyEvent(ev);
-            case FlowPausedEvent ev -> flowPausedEvent(ev);
+            case FlowResetEvent _ -> flowResetEvent();
+            case FlowReadyEvent _ -> flowReadyEvent();
+            case FlowPausedEvent _ -> flowPausedEvent();
         }
     }
 
 
-    private void flowPausedEvent(FlowPausedEvent flowPausedEvent) {
+    private void flowPausedEvent() {
         status = FlowStatus.PAUSED;
     }
 
-    private void flowReadyEvent(FlowReadyEvent flowReadyEvent) {
+    private void flowReadyEvent() {
         status = FlowStatus.READY_TO_CONTINUE;
     }
 
@@ -135,26 +135,20 @@ public class FlowImpl implements Flow {
         throw flowFailedEvent.exception();
     }
 
-    private void flowCompletedEvent(FlowCompletedEvent flowCompletedEvent) {
+    private void flowCompletedEvent() {
         status = FlowStatus.COMPLETED;
     }
 
-    private void flowResetEvent(FlowResetEvent flowResetEvent) {
+    private void flowResetEvent() {
         status = FlowStatus.READY_TO_CONTINUE;
 
-        startedEventPublished = false;
     }
 
-    private void flowStartedEvent(FlowStartedEvent startedEvent) {
+    private void flowStartedEvent() {
         status = FlowStatus.RUNNING;
     }
 
     private void propagateEvent(ExecutionEvent event) {
-
-        if (nextNode == null) {
-            return;
-        }
-
         ScopedValue.where(FLOW_CONTEXT, context).run(() -> {
 
             try (var scope = StructuredTaskScope.open()) {
@@ -207,10 +201,8 @@ public class FlowImpl implements Flow {
 
         sb.append("\n").append(output.getTab()).append("Status:").append(status);
 
-        if (nextNode != null) {
-            sb.append("\n").append(output.getTab()).append("Next Node:");
-            nextNode.prettyPrint(output);
-        }
+        sb.append("\n").append(output.getTab()).append("Next Node:");
+        nextNode.prettyPrint(output);
 
         output.decreaseLevel();
     }

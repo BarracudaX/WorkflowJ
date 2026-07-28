@@ -1,10 +1,5 @@
 package com.barracuda.engine.chain;
 
-import com.barracuda.engine.event.Command;
-import com.barracuda.engine.event.Command.Continue;
-import com.barracuda.engine.event.Command.Prepare;
-import com.barracuda.engine.event.Command.Reset;
-import com.barracuda.engine.event.ExecutionEvent;
 import com.barracuda.engine.flow.FlowPrettyOutput;
 import com.barracuda.engine.task.ActionTask;
 
@@ -34,10 +29,9 @@ public class ActionTaskNode extends AbstractTaskNode{
                 .append("\n").append(output.getTab()).append(task.toString())
                 .append("\n\n");
 
-        if (next != null) {
-            sb.append(output.getTab()).append("Next Node:");
-            next.prettyPrint(output);
-        }
+        sb.append(output.getTab()).append("Next Node:");
+        next.prettyPrint(output);
+
         output.decreaseLevel();
     }
 

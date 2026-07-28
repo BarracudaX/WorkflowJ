@@ -1,6 +1,6 @@
 package com.barracuda.engine.chain;
 
-import com.barracuda.engine.event.Command;
+import com.barracuda.engine.command.Command;
 import com.barracuda.engine.event.ExecutionEvent;
 import com.barracuda.engine.flow.Flow;
 import com.barracuda.engine.flow.FlowInterruptedException;
@@ -8,9 +8,11 @@ import com.barracuda.engine.flow.FlowPrettyOutput;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+
 
 public class ParallelNode implements ChainNode {
 
@@ -19,7 +21,7 @@ public class ParallelNode implements ChainNode {
 
     public ParallelNode(List<Flow> subflows, ChainNode next) {
         this.subflows = subflows.stream().collect(Collectors.toMap(Flow::id, Function.identity()));
-        this.next = next;
+        this.next = Objects.requireNonNull(next);
     }
 
 
@@ -36,9 +38,7 @@ public class ParallelNode implements ChainNode {
             handle(exception);
         }
 
-        if (next != null) {
-            next.command(command);
-        }
+        next.command(command);
     }
 
     @Override
@@ -50,9 +50,7 @@ public class ParallelNode implements ChainNode {
             handle(exception);
         }
 
-        if (next != null) {
-            next.event(event);
-        }
+        next.event(event);
     }
 
     @Override
@@ -64,9 +62,7 @@ public class ParallelNode implements ChainNode {
 
         subflows.values().forEach(subflow -> subflow.prettyPrint(output));
 
-        if (next != null) {
-            next.prettyPrint(output);
-        }
+        next.prettyPrint(output);
     }
 
     private void handle(Throwable exception) {

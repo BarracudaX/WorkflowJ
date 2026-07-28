@@ -1,13 +1,14 @@
 package com.barracuda.engine.chain;
 
-import com.barracuda.engine.event.Command;
-import com.barracuda.engine.event.Command.Continue;
-import com.barracuda.engine.event.Command.Prepare;
-import com.barracuda.engine.event.Command.Reset;
+import com.barracuda.engine.command.Command;
+import com.barracuda.engine.command.Command.Continue;
+import com.barracuda.engine.command.Command.Reset;
+import com.barracuda.engine.command.CommandRejectedException;
 import com.barracuda.engine.event.ExecutionEvent;
-import com.barracuda.engine.event.ExecutionEvent.TaskEvent.TaskStartEvent;
+import com.barracuda.engine.event.ExecutionEvent.TaskEvent.*;
 import com.barracuda.engine.event.FlowEventPublisher;
 import com.barracuda.engine.flow.FlowInterruptedException;
+import com.barracuda.engine.task.TaskStatus;
 
 import java.util.Objects;
 import java.util.concurrent.ExecutionException;
@@ -17,7 +18,7 @@ import static com.barracuda.engine.flow.Flow.FLOW_CONTEXT;
 public abstract class AbstractTaskNode implements ChainNode{
 
     protected final ChainNode next;
-    private volatile boolean havePublishedTaskStartedEvent  = false;
+    private volatile TaskStatus status = TaskStatus.READY;
 
     protected AbstractTaskNode(ChainNode next) {
         this.next = next;
@@ -30,87 +31,119 @@ public abstract class AbstractTaskNode implements ChainNode{
 
     @Override
     public void command(Command command) {
+        if(status == TaskStatus.COMPLETED) {
+            next.command(command);
+            return;
+        }
         switch (command) {
             case Continue continueCommand -> handleContinueCommand(continueCommand);
-            case Prepare _, Reset _ -> propagateCommand(command);
+            case Reset resetCommand -> handleResetCommand(resetCommand);
         }
     }
 
-    private void handleContinueCommand(Continue continueCommand) {
-
-        TaskStartEvent taskStartedEvent = new TaskStartEvent(FLOW_CONTEXT.get().flowID(), taskID());
-        FlowEventPublisher eventPublisher = FLOW_CONTEXT.get().flowEventPublisher();
-        long flowID = FLOW_CONTEXT.get().flowID();
-
-        if (!havePublishedTaskStartedEvent) {
-            eventPublisher.publish(taskStartedEvent);
+    private void handleResetCommand(Reset command) {
+        if (status == TaskStatus.RUNNING) {
+            throw new CommandRejectedException("Cannot reset a running task.");
         }
 
-        event(taskStartedEvent);
+        next.command(command);
+
+        taskReset();
+    }
+
+    private void taskReset(){
+        TaskResetEvent taskResetEvent = new TaskResetEvent(FLOW_CONTEXT.get().flowID(), taskID());
+
+        FLOW_CONTEXT.get().flowEventPublisher().publish(taskResetEvent);
+
+        taskEvent(taskResetEvent);
+    }
+
+    private void handleContinueCommand(Continue continueCommand) {
+        if (status != TaskStatus.READY) {
+            throw new CommandRejectedException("Task cannot continue due to its state being " + status);
+        }
+
+        taskStarting();
 
         try {
             executeTask();
         } catch (Exception ex){
-            handle(ex,flowID);
+            taskFailed(ex,FLOW_CONTEXT.get().flowID());
         }
 
-        ExecutionEvent.TaskEvent.TaskCompletedEvent taskCompletedEvent = new ExecutionEvent.TaskEvent.TaskCompletedEvent(flowID, taskID());
-        eventPublisher.publish(taskCompletedEvent);
-        event(taskCompletedEvent);
+        taskCompleted();
 
-        propagateCommand(continueCommand);
+        next.command(continueCommand);
+    }
+
+    private void taskCompleted() {
+        FlowEventPublisher eventPublisher = FLOW_CONTEXT.get().flowEventPublisher();
+
+        TaskCompletedEvent taskCompletedEvent = new TaskCompletedEvent(FLOW_CONTEXT.get().flowID(), taskID());
+
+        eventPublisher.publish(taskCompletedEvent);
+
+        event(taskCompletedEvent);
+    }
+
+    private void taskStarting(){
+        FlowEventPublisher eventPublisher = FLOW_CONTEXT.get().flowEventPublisher();
+
+        TaskStartEvent taskStartedEvent = new TaskStartEvent(FLOW_CONTEXT.get().flowID(), taskID());
+
+        eventPublisher.publish(taskStartedEvent);
+
+        event(taskStartedEvent);
     }
 
     @Override
     public void event(ExecutionEvent event) {
-        if (Objects.requireNonNull(event) instanceof ExecutionEvent.TaskEvent ev && ev.taskID() == taskID()) {
+        if (Objects.requireNonNull(event) instanceof ExecutionEvent.TaskEvent ev && ev.taskID() == taskID() && ev.flowID() == FLOW_CONTEXT.get().flowID()) {
             taskEvent(ev);
         } else {
-            if (next != null) {
-                next.event(event);
-            }
+            next.event(event);
         }
     }
 
     private void taskEvent(ExecutionEvent.TaskEvent taskEvent) {
         switch (taskEvent) {
-            case TaskStartEvent ev -> taskStartedEvent(ev);
-            case ExecutionEvent.TaskEvent.TaskFailedEvent ev -> taskFailedEvent(ev);
-            case ExecutionEvent.TaskEvent.TaskPausedEvent ev -> taskPausedEvent(ev);
-            case ExecutionEvent.TaskEvent.TaskCompletedEvent ev -> {}
-            case ExecutionEvent.TaskEvent.TaskResetEvent ev -> taskResetEvent(ev);
+            case TaskStartEvent _ -> taskStartedEvent();
+            case TaskFailedEvent ev -> taskFailedEvent(ev);
+            case TaskPausedEvent _ -> taskPausedEvent();
+            case TaskCompletedEvent _ -> taskCompletedEvent();
+            case TaskResetEvent _ -> taskResetEvent();
         }
     }
 
-    private void taskResetEvent(ExecutionEvent.TaskEvent.TaskResetEvent taskResetEvent) {
-        havePublishedTaskStartedEvent = false;
+    private void taskCompletedEvent() {
+        status = TaskStatus.COMPLETED;
     }
 
-    private void taskPausedEvent(ExecutionEvent event) {
-
+    private void taskResetEvent() {
+        status = TaskStatus.READY;
     }
 
-    private void taskFailedEvent(ExecutionEvent.TaskEvent.TaskFailedEvent taskFailedEvent) {
+    private void taskPausedEvent() {
+        status = TaskStatus.PAUSED;
+    }
+
+    private void taskFailedEvent(TaskFailedEvent taskFailedEvent) {
+        status = TaskStatus.FAILED;
         throw taskFailedEvent.exception();
     }
 
-    private void taskStartedEvent(TaskStartEvent taskStartEvent) {
-        havePublishedTaskStartedEvent = true;
+    private void taskStartedEvent() {
+        status = TaskStatus.RUNNING;
     }
 
-    private void propagateCommand(Command command) {
-        if (next != null) {
-            next.command(command);
-        }
-    }
-
-    private void handle(Throwable cause,long flowID) {
+    private void taskFailed(Throwable cause, long flowID) {
         switch (cause){
-            case ExecutionException ex -> handle(ex.getCause(),flowID);
+            case ExecutionException ex -> taskFailed(ex.getCause(),flowID);
             case FlowInterruptedException ex -> {
                 Thread.currentThread().interrupt();
 
-                ExecutionEvent.TaskEvent.TaskPausedEvent taskpausedEvent = new ExecutionEvent.TaskEvent.TaskPausedEvent(flowID, taskID());
+                TaskPausedEvent taskpausedEvent = new TaskPausedEvent(flowID, taskID());
 
                 FLOW_CONTEXT.get().flowEventPublisher().publish(taskpausedEvent);
 
@@ -118,13 +151,13 @@ public abstract class AbstractTaskNode implements ChainNode{
 
                 throw ex;
             }
-            case InterruptedException ex -> handle(new FlowInterruptedException("Task Interrupted",ex), flowID);
+            case InterruptedException ex -> taskFailed(new FlowInterruptedException("Task Interrupted",ex), flowID);
             case RuntimeException ex -> {
-                ExecutionEvent.TaskEvent.TaskFailedEvent taskFailedEvent = new ExecutionEvent.TaskEvent.TaskFailedEvent(flowID, taskID(), ex);
+                TaskFailedEvent taskFailedEvent = new TaskFailedEvent(flowID, taskID(), ex);
                 FLOW_CONTEXT.get().flowEventPublisher().publish(taskFailedEvent);
                 event(taskFailedEvent);
             }
-            default -> handle(new RuntimeException(cause),flowID);
+            default -> taskFailed(new RuntimeException(cause),flowID);
         }
     }
 

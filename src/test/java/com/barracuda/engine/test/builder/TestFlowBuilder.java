@@ -27,17 +27,19 @@ public class TestFlowBuilder{
     protected final FlowBuilder builder;
     protected final AtomicLong counter; // the only reason we are using atomic is for easier sharing(not thread safety).
     protected final long flowID;
+    private final Set<String> usedNames;
 
     /**
      * Use this constructor for subflows
      */
-    TestFlowBuilder(FlowBuilder builder,ExecutorService cpuExecutor,long flowID, ExecutorService ioExecutor,InMemoryEventCapturer eventCapturer,AtomicLong counter) {
+    private TestFlowBuilder(FlowBuilder builder,ExecutorService cpuExecutor,long flowID, ExecutorService ioExecutor,InMemoryEventCapturer eventCapturer,AtomicLong counter, Set<String> usedNames) {
         this.flowID = flowID;
         this.cpuExecutor = cpuExecutor;
         this.ioExecutor = ioExecutor;
         this.builder = builder;
         this.eventCapturer = eventCapturer;
         this.counter = counter;
+        this.usedNames = usedNames;
     }
 
     /**
@@ -53,7 +55,7 @@ public class TestFlowBuilder{
         eventPublisher.subscribe(eventCapturer);
         builder.eventPublisher(eventPublisher);
 
-        this(builder,cpuExecutor, 1,ioExecutor,eventCapturer,new AtomicLong(1));
+        this(builder,cpuExecutor, 1,ioExecutor,eventCapturer,new AtomicLong(1),new HashSet<>());
     }
 
     public TestFlowBuilder parallel(Consumer<TestSubflowBuilder> consumer) {
@@ -66,6 +68,9 @@ public class TestFlowBuilder{
     }
 
     public TestFlowBuilder actionTask(String taskName) {
+        if (!usedNames.add(taskName)) {
+            throw new IllegalArgumentException(taskName + " is already used");
+        }
         TestTask task = new TestTask(counter.incrementAndGet(),taskName);
         saveTask(taskName,task);
         builder.actionTask(task);
@@ -73,7 +78,7 @@ public class TestFlowBuilder{
         return this;
     }
 
-    private <I> void saveTask(String taskName, TestTask task) {
+    private void saveTask(String taskName, TestTask task) {
         if (testTasks.put(taskName, task) != null) {
             throw new IllegalArgumentException("Duplicate task name: " + taskName);
         }
@@ -90,13 +95,11 @@ public class TestFlowBuilder{
         public TestSubflowBuilder subflow(String subflowName, Consumer<TestFlowBuilder> consumer) {
             var subflowID = counter.incrementAndGet();
             parallelFlowBuilder.subflow(subflowID,(builder) -> {
-                var newBuilder = new TestFlowBuilder((FlowBuilder)builder,cpuExecutor, subflowID, ioExecutor,eventCapturer,counter);
+                var newBuilder = new TestFlowBuilder((FlowBuilder)builder,cpuExecutor, subflowID, ioExecutor,eventCapturer,counter,usedNames);
 
                 consumer.accept(newBuilder);
 
                 parallelFlowBuilder.onBuild(flow -> subflows.put(subflowName,new TestFlow(eventCapturer,flow,newBuilder.subflows,newBuilder.testTasks)));
-                //bug(we create a new instance instead of using the one created by the original builder
-//                subflows.put(subflowName, newBuilder.build());
             });
             return this;
         }

@@ -1,8 +1,6 @@
 package com.barracuda.engine.flow;
 
-import com.barracuda.engine.event.Command.Continue;
-import com.barracuda.engine.test.assertJ.CustomAssertions;
-import com.barracuda.engine.test.flow.TestFlow;
+import com.barracuda.engine.command.Command.Continue;
 import com.barracuda.engine.utility.AwaitilityUtils;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
@@ -12,8 +10,6 @@ import org.springframework.boot.test.system.OutputCaptureExtension;
 
 import java.time.Duration;
 
-import static com.barracuda.engine.test.assertJ.CustomAssertions.assertThat;
-import static com.barracuda.engine.test.builder.TestFlowBuilder.testFlow;
 import static org.assertj.core.api.Assertions.*;
 
 
@@ -46,14 +42,4 @@ public class FlowTest extends AbstractFlowTest{
     void shouldExecutedTasksSequentially() {
     }
 
-    @Disabled("Already tested by FlowEventReplayingTest.shouldNotAllowSendingEventsToFlowThatIsRunning")
-    @Test
-    void shouldThrowISEWhenTryingToExecuteAlreadyRunningFlow() {
-        TestFlow testFlow = testFlow()
-                .actionTask("task")
-                .build()
-                .startFlow();
-
-        CustomAssertions.assertThatIllegalStateException().isThrownBy(testFlow::startSync);
-    }
 }

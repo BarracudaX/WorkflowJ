@@ -1,5 +1,6 @@
 package com.barracuda.engine.flow;
 
+import com.barracuda.engine.command.CommandRejectedException;
 import com.barracuda.engine.event.ExecutionEvent.FlowEvent.FlowPausedEvent;
 import com.barracuda.engine.event.ExecutionEvent.FlowEvent.FlowResetEvent;
 import com.barracuda.engine.event.ExecutionEvent.FlowEvent.FlowStartedEvent;
@@ -8,7 +9,7 @@ import org.junit.jupiter.api.Test;
 
 import static com.barracuda.engine.test.assertJ.CustomAssertions.assertThat;
 import static com.barracuda.engine.test.builder.TestFlowBuilder.testFlow;
-import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 public class FlowResetTest {
 
@@ -19,7 +20,7 @@ public class FlowResetTest {
                 .build()
                 .startFlow();
 
-        assertThatIllegalStateException().isThrownBy(testFlow::reset);
+        assertThatThrownBy(testFlow::reset).isInstanceOf(CommandRejectedException.class);
     }
 
     @Test
