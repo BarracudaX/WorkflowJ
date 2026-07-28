@@ -28,8 +28,7 @@ public class SubflowEventPublisherDecorator implements FlowEventPublisher {
             case FlowCompletedEvent _ -> flowEventPublisher.publish(new SubflowCompletedEvent(rootID,subflowID));
             case FlowFailedEvent(_, RuntimeException exception) -> flowEventPublisher.publish(new SubflowFailedEvent(rootID, exception, subflowID));
             case FlowPausedEvent _ -> flowEventPublisher.publish(new SubflowPausedEvent(rootID,subflowID));
-            case FlowReadyEvent flowReadyEvent -> flowEventPublisher.publish(new SubflowReadyEvent(rootID,subflowID));
-            case FlowResetEvent flowResetEvent -> flowEventPublisher.publish(new SubflowResetEvent(rootID,subflowID));
+            case FlowResetEvent _ -> flowEventPublisher.publish(new SubflowResetEvent(rootID,subflowID));
         }
     }
 

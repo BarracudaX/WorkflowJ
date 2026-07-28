@@ -35,13 +35,6 @@ public class SubflowEventPublisherDecoratorTest {
     }
 
     @Test
-    void shouldTranslateFlowReadyEventToSubflowReadyEvent() {
-        decorator.publish(new FlowReadyEvent(subflowID));
-
-        verify(eventPublisherMock).publish(new SubflowReadyEvent(rootFlowID,subflowID));
-    }
-
-    @Test
     void shouldTranslateFlowResetEventToSubflowResetEvent() {
         decorator.publish(new FlowResetEvent(subflowID));
 
@@ -102,15 +95,6 @@ public class SubflowEventPublisherDecoratorTest {
     }
 
     @Test
-    void shouldNotTranslateFlowReadyEventToSubflowReadyEventWhenTheEventIsNotAssociatedWithTheSubflow() {
-        var unrelatedFlowReadyEvent = new FlowReadyEvent(777);
-
-        decorator.publish(unrelatedFlowReadyEvent);
-
-        verify(eventPublisherMock).publish(unrelatedFlowReadyEvent);
-    }
-
-    @Test
     void shouldNotTranslateFlowResetEventToSubflowResetEventWhenTheEventIsNotAssociatedWithTheSubflow() {
         var unrelatedFlowResetEvent = new FlowResetEvent(777);
 
@@ -132,7 +116,7 @@ public class SubflowEventPublisherDecoratorTest {
                 new TaskStartEvent(subflowID, 110000), new TaskCompletedEvent(subflowID, 10000), new TaskResetEvent(subflowID, 110000),
                 new TaskFailedEvent(subflowID, 10000, null), new TaskPausedEvent(subflowID, 10000), new SubflowStartedEvent(rootFlowID, subflowID),
                 new SubflowCompletedEvent(rootFlowID,subflowID), new SubflowFailedEvent(rootFlowID,null,subflowID), new SubflowPausedEvent(rootFlowID,subflowID),
-                new SubflowReadyEvent(rootFlowID,subflowID), new SubflowResetEvent(rootFlowID,subflowID)
+                new SubflowResetEvent(rootFlowID,subflowID)
         );
     }
 }

@@ -32,7 +32,6 @@ public class SubflowDecorator implements Flow {
             case SubflowCompletedEvent(_, long subflowID) -> subflow.event(new FlowCompletedEvent(subflowID));
             case SubflowPausedEvent(_,long subflowID) -> subflow.event(new FlowPausedEvent(subflowID));
             case SubflowFailedEvent(_, RuntimeException exception, long subflowID) -> subflow.event(new FlowFailedEvent(subflowID, exception));
-            case SubflowReadyEvent(_, long subflowID) -> subflow.event(new FlowReadyEvent(subflowID));
             case SubflowResetEvent(_, long subflowID) -> subflow.event(new FlowResetEvent(subflowID));
         }
     }

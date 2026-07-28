@@ -89,24 +89,6 @@ public class SubflowDecoratorTest {
     }
 
     @Test
-    void shouldTranslateSubflowReadyEventToFlowReadyEvent() {
-        var subflowReadyEvent = new SubflowReadyEvent(rootID, subflowID);
-
-        flowDecorator.event(subflowReadyEvent);
-
-        verify(subflowMock).event(new FlowReadyEvent(subflowID));
-    }
-
-    @Test
-    void shouldNotTranslateSubflowReadyEventToFlowReadyEventWhenTheEventIsNotAssociatedWithTheSubflow() {
-        var unrelatedSubflowReadyEvent = new SubflowReadyEvent(rootID, 555);
-
-        flowDecorator.event(unrelatedSubflowReadyEvent);
-
-        verify(subflowMock).event(unrelatedSubflowReadyEvent);
-    }
-
-    @Test
     void shouldTranslateSubflowResetEventToFlowResetEvent() {
         var subflowResetEvent = new SubflowResetEvent(rootID, subflowID);
 
@@ -128,7 +110,7 @@ public class SubflowDecoratorTest {
      */
     private static List<ExecutionEvent> nonTranslatableEvents(){
         return List.of(
-                new FlowStartedEvent(subflowID),new FlowCompletedEvent(subflowID),new FlowFailedEvent(subflowID,null),new FlowPausedEvent(subflowID), new FlowResetEvent(subflowID),new FlowReadyEvent(subflowID),
+                new FlowStartedEvent(subflowID),new FlowCompletedEvent(subflowID),new FlowFailedEvent(subflowID,null),new FlowPausedEvent(subflowID), new FlowResetEvent(subflowID),
                 new TaskStartEvent(subflowID,110000),new TaskCompletedEvent(subflowID,10000), new TaskFailedEvent(subflowID,10000,null),
                 new TaskPausedEvent(subflowID,10000), new TaskResetEvent(subflowID,10000)
         );

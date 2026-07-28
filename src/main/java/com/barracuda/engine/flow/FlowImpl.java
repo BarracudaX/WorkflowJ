@@ -116,7 +116,6 @@ public class FlowImpl implements Flow {
             case FlowCompletedEvent _ -> flowCompletedEvent(); // already completed.
             case FlowFailedEvent ev -> flowFailedEvent(ev);
             case FlowResetEvent _ -> flowResetEvent();
-            case FlowReadyEvent _ -> flowReadyEvent();
             case FlowPausedEvent _ -> flowPausedEvent();
         }
     }
@@ -124,10 +123,6 @@ public class FlowImpl implements Flow {
 
     private void flowPausedEvent() {
         status = FlowStatus.PAUSED;
-    }
-
-    private void flowReadyEvent() {
-        status = FlowStatus.READY_TO_CONTINUE;
     }
 
     private void flowFailedEvent(FlowFailedEvent flowFailedEvent) {

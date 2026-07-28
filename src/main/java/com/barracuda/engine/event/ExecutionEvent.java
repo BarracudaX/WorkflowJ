@@ -16,15 +16,11 @@ public sealed interface ExecutionEvent {
 
         record SubflowPausedEvent(long rootID, long subflowID) implements SubflowEvent{ }
 
-        record SubflowReadyEvent(long rootID, long subflowID) implements SubflowEvent{ }
-
         record SubflowResetEvent(long rootID, long subflowID) implements SubflowEvent{ }
     }
 
     sealed interface FlowEvent extends ExecutionEvent {
         long flowID();
-
-        record FlowReadyEvent(long flowID) implements FlowEvent{ }
 
         record FlowStartedEvent(long flowID) implements FlowEvent { }
 
